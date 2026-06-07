@@ -5,13 +5,16 @@ import logging
 import signal
 import threading
 import time
-from pathlib import Path
 
+from gpu_monitor.cleanup.cleanup_manager import CleanupManager
 from gpu_monitor.collector.nvidia_smi_collector import NvidiaSmiCollector
 from gpu_monitor.config import Config, load_config
 from gpu_monitor.logging_config import configure_logging
+from gpu_monitor.reports.json_cache import ReportCache
+from gpu_monitor.scheduler.jobs import SimpleScheduler, parse_job_date
 from gpu_monitor.storage.database import Database
 from gpu_monitor.storage.repositories import MonitorRepository
+from gpu_monitor.web.dashboard import run_dashboard_server
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +27,18 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("init-db", help="Initialize SQLite database")
     subparsers.add_parser("collect-once", help="Run one GPU collection cycle and exit")
-    subparsers.add_parser("run", help="Run collector and heartbeat loops")
+    subparsers.add_parser("run", help="Run collector, heartbeat, dashboard, and scheduler loops")
+    subparsers.add_parser("status", help="Print database row counts")
+
+    daily_parser = subparsers.add_parser("generate-daily", help="Generate daily JSON cache")
+    daily_parser.add_argument("--date", help="Date in YYYY-MM-DD format; defaults to today")
+    daily_parser.add_argument("--force", action="store_true", help="Regenerate even if cache exists")
+
+    weekly_parser = subparsers.add_parser("generate-weekly", help="Generate weekly JSON cache")
+    weekly_parser.add_argument("--date", help="Any date in the target week; defaults to today")
+    weekly_parser.add_argument("--force", action="store_true", help="Regenerate even if cache exists")
+
+    subparsers.add_parser("cleanup", help="Run retention cleanup once")
     return parser
 
 
@@ -47,6 +61,26 @@ def main(argv: list[str] | None = None) -> int:
     if command == "collect-once":
         collect_once(config, repository)
         logger.info("Database row counts: %s", repository.latest_counts())
+        return 0
+
+    if command == "status":
+        logger.info("Database row counts: %s", repository.latest_counts())
+        return 0
+
+    if command == "generate-daily":
+        target = parse_job_date(args.date, config.app.timezone)
+        summary = ReportCache(database, config).generate_daily(target, force=args.force)
+        logger.info("Generated daily cache for %s: %s", target, summary["overview"])
+        return 0
+
+    if command == "generate-weekly":
+        target = parse_job_date(args.date, config.app.timezone)
+        summary = ReportCache(database, config).generate_weekly(target, force=args.force)
+        logger.info("Generated weekly cache for %s: %s", target, summary["overview"])
+        return 0
+
+    if command == "cleanup":
+        logger.info("Cleanup result: %s", CleanupManager(database, config).run())
         return 0
 
     if command == "run":
@@ -103,16 +137,38 @@ def run_service(config: Config, repository: MonitorRepository) -> None:
         args=(config, repository, stop_event),
         daemon=True,
     )
+    scheduler = SimpleScheduler(repository.database, config)
+    scheduler_thread = threading.Thread(
+        target=scheduler.run_loop,
+        name="scheduler-loop",
+        args=(stop_event,),
+        daemon=True,
+    )
+    dashboard_thread = None
+    if config.web.enabled:
+        dashboard_thread = threading.Thread(
+            target=run_dashboard_server,
+            name="dashboard-server",
+            args=(config, repository.database, stop_event),
+            daemon=True,
+        )
 
     logger.info("Starting GPU monitor service with config-backed data path %s", config.storage.sqlite_path)
+    scheduler.run_startup_compensation()
     collector_thread.start()
     heartbeat_thread.start()
+    scheduler_thread.start()
+    if dashboard_thread is not None:
+        dashboard_thread.start()
 
     while not stop_event.is_set():
         time.sleep(0.5)
 
     collector_thread.join(timeout=5)
     heartbeat_thread.join(timeout=5)
+    scheduler_thread.join(timeout=5)
+    if dashboard_thread is not None:
+        dashboard_thread.join(timeout=5)
     logger.info("GPU monitor service stopped")
 
 

@@ -339,16 +339,15 @@ Dashboard 和历史统计中以 GPU index 作为主要展示标识。
 | GPU 信息采集 | `nvidia-smi` 或 `pynvml` | MVP 可先用 `nvidia-smi` |
 | PID 用户解析 | `psutil` | `PID -> Linux username` |
 | 本地数据库 | SQLite | 单机轻量持久化 |
-| Web 框架 | FastAPI | API 清晰，易于健康检查和模板集成 |
-| Web 运行 | uvicorn | 轻量 ASGI server |
-| 页面模板 | Jinja2 | 适合简单服务端渲染页面 |
+| Web 服务 | Python 标准库 `http.server` | 无额外 Web 依赖，符合轻量目标 |
+| 页面渲染 | 原生 HTML/CSS/JavaScript | 页面由静态资源和 API 组合渲染 |
 | 前端交互 | 原生 JavaScript fetch | 30 秒轮询即可满足实时查看 |
-| 调度 | APScheduler | 适合 Python 内部定时任务 |
+| 调度 | Python 线程内简单调度器 | 无额外调度依赖，执行日报/周报缓存和清理 |
 | 后台服务 | systemd | 自启动、异常重启、日志管理 |
 | 配置管理 | `config.yaml` + `.env` | 非敏感配置放 yaml，可选环境变量覆盖 |
 | 统计缓存格式 | JSON | 便于 Dashboard 和后续程序化分析 |
 | 日志 | Python `logging` | 配合 logrotate |
-| 测试 | pytest | 单元测试聚合逻辑、API 和异常场景 |
+| 测试 | 标准库 `unittest` | 单元测试聚合逻辑、API 和异常场景 |
 
 ---
 
@@ -378,7 +377,7 @@ flowchart TD
     L --> O[weekly_reports JSON]
     M --> G
 
-    B --> P[FastAPI Web Server]
+    B --> P[Local Web Server]
     P --> Q[Dashboard Pages]
     P --> R[Dashboard API]
     R --> G
@@ -1436,7 +1435,7 @@ YYYY-MM-DD
 可能原因：
 
 - 程序重启；
-- APScheduler misfire；
+- 调度线程重复触发；
 - 手动执行补偿任务；
 - 多实例意外启动。
 
@@ -1979,7 +1978,7 @@ sudo chmod 640 /etc/gpu-monitor/config.yaml
 
 任务：
 
-1. 接入 FastAPI 和 uvicorn；
+1. 接入标准库本地 Web Server；
 2. 实现 `/api/current`；
 3. 实现 `/api/health`；
 4. 实现首页模板；
@@ -2035,7 +2034,7 @@ Dashboard 可查看当天累计和任意日期日报。
 
 任务：
 
-1. 接入 APScheduler；
+1. 接入简单线程调度器；
 2. 每天 00:05 生成前一天日报缓存；
 3. 每周一 00:10 生成上一自然周周报缓存；
 4. 每天 01:00 执行保留周期清理；
@@ -2187,8 +2186,8 @@ Python 常驻服务
 + nvidia-smi/pynvml 采集
 + psutil 用户归因
 + SQLite 持久化
-+ FastAPI + Jinja2 Dashboard
-+ APScheduler 定时统计缓存
++ 标准库本地 Dashboard
++ 线程调度统计缓存
 + JSON 日报/周报缓存
 + systemd 自启动与异常重启
 + heartbeat 中断识别

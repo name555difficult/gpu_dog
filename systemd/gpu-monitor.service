@@ -1,0 +1,16 @@
+[Unit]
+Description=GPU Monitor Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/ssd1t/gpu_dog
+ExecStart=/usr/bin/python3 -m gpu_monitor.main --config /mnt/ssd1t/gpu_dog/config.yaml run
+Restart=always
+RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

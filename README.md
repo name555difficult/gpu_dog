@@ -1,13 +1,18 @@
 # GPU Monitor
 
-Local GPU usage monitor for a shared server. The current implementation covers the phase 1 collector MVP:
+Local GPU usage monitor for a shared server. It collects GPU usage with `nvidia-smi`, persists data in SQLite, and serves a lightweight localhost Dashboard.
 
-- reads `config.yaml`
-- initializes SQLite
-- collects GPU device snapshots through `nvidia-smi`
-- resolves GPU process owners through `psutil`
-- writes process samples and heartbeat rows
-- supports one-shot and long-running collection modes
+Implemented capabilities:
+
+- continuous GPU process and device snapshot collection
+- Linux username attribution through `psutil`
+- SQLite persistence with heartbeat and error events
+- localhost Dashboard at `http://127.0.0.1:8765`
+- APIs for current state, today, day, week, and health
+- daily and weekly JSON cache generation
+- lightweight retention cleanup
+- systemd service template
+- standard-library `unittest` coverage
 
 ## Quick Start
 
@@ -23,13 +28,39 @@ Collect one sample:
 python3 -m gpu_monitor.main --config config.yaml collect-once
 ```
 
-Run the collector loop:
+Run the full service:
 
 ```bash
 python3 -m gpu_monitor.main --config config.yaml run
+```
+
+Open the Dashboard on the server:
+
+```text
+http://127.0.0.1:8765
+```
+
+For remote access:
+
+```bash
+ssh -L 8765:127.0.0.1:8765 user@server
+```
+
+Then open:
+
+```text
+http://localhost:8765
+```
+
+Run tests:
+
+```bash
+python3 -m unittest discover -v
 ```
 
 Data and logs use the paths in `config.yaml`. The default development paths are:
 
 - SQLite: `/mnt/ssd1t/gpu_dog/data/monitor.db`
 - logs: `logs/gpu-monitor.log`
+
+Detailed documentation: [docs/USAGE.md](docs/USAGE.md).

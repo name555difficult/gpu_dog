@@ -1,0 +1,1 @@
+"""Lightweight localhost dashboard."""
