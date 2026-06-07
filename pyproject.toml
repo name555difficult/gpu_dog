@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpu-monitor"
+version = "0.1.0"
+description = "Local GPU usage monitor with SQLite persistence and dashboard-oriented data collection."
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+    "psutil>=5.9",
+]
+
+[project.scripts]
+gpu-monitor = "gpu_monitor.main:main"
