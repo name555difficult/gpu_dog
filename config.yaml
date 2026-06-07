@@ -1,0 +1,44 @@
+app:
+  server_name: "gpu-server"
+  timezone: "Asia/Shanghai"
+
+web:
+  enabled: true
+  host: "127.0.0.1"
+  port: 8765
+  refresh_interval_seconds: 30
+
+collector:
+  backend: "nvidia-smi"
+  sample_interval_seconds: 30
+  active_memory_threshold_mb: 100
+  command_timeout_seconds: 10
+
+session:
+  gap_threshold_seconds: 300
+
+heartbeat:
+  interval_seconds: 60
+  missing_threshold_seconds: 300
+
+reports:
+  cache_dir: "/mnt/ssd1t/gpu_dog/data/reports"
+  daily:
+    generate_time: "00:05"
+  weekly:
+    generate_day: "monday"
+    generate_time: "00:10"
+
+storage:
+  sqlite_path: "/mnt/ssd1t/gpu_dog/data/monitor.db"
+  cleanup:
+    raw_retention_days: 3
+    gpu_snapshot_retention_days: 3
+    daily_cache_retention_days: 14
+    weekly_cache_retention_weeks: 12
+    error_log_retention_days: 7
+    heartbeat_retention_days: 7
+
+users:
+  alias:
+    unknown: "未知用户"

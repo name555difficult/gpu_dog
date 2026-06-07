@@ -223,18 +223,18 @@ weekly_reports(week_start, week_end) UNIQUE
 
 ### 2.8 数据清理时机
 
-Dashboard 模式下，不建议在日报生成后立即删除当天原始数据，因为用户可能需要回看近期详细历史。
+Dashboard 模式下，不建议在日报生成后立即删除当天原始数据，因为用户可能需要回看最近几天的详细历史。但本项目优先追求轻量存储，因此默认只保留很短的原始数据窗口。
 
 推荐采用固定保留周期：
 
 | 数据 | 推荐保留 |
 |---|---:|
-| 原始 GPU 进程采样 | 30 天 |
-| GPU 设备快照 | 30 天 |
-| heartbeat | 30 天 |
-| error_events | 90 天 |
-| daily JSON 缓存 | 90 天 |
-| weekly JSON 缓存 | 52 周 |
+| 原始 GPU 进程采样 | 3 天 |
+| GPU 设备快照 | 3 天 |
+| heartbeat | 7 天 |
+| error_events | 7 天 |
+| daily JSON 缓存 | 14 天 |
+| weekly JSON 缓存 | 12 周 |
 
 清理原则：
 
@@ -1288,12 +1288,12 @@ YYYY-MM-DD
 
 | 数据 | 用途 | 推荐清理策略 |
 |---|---|---|
-| 原始采样数据 | Dashboard 近期查询、日报补算 | 保留最近 30 天 |
-| GPU 快照数据 | 当前卡片和近期趋势 | 保留最近 30 天 |
-| 日报 JSON 缓存 | 历史日报、周报聚合 | 保留最近 90 天 |
-| 周报 JSON 缓存 | 长期审计 | 保留最近 52 周 |
-| error_events | 排查异常 | 保留最近 90 天 |
-| heartbeat | 检测中断 | 保留最近 30 天 |
+| 原始采样数据 | Dashboard 最近几天查询、日报补算 | 保留最近 3 天 |
+| GPU 快照数据 | 当前卡片和最近趋势 | 保留最近 3 天 |
+| 日报 JSON 缓存 | 近期历史日报、周报聚合 | 保留最近 14 天 |
+| 周报 JSON 缓存 | 轻量长期审计 | 保留最近 12 周 |
+| error_events | 排查近期异常 | 保留最近 7 天 |
+| heartbeat | 检测近期中断 | 保留最近 7 天 |
 
 ---
 
@@ -1511,12 +1511,12 @@ reports:
 storage:
   sqlite_path: "/var/lib/gpu-monitor/monitor.db"
   cleanup:
-    raw_retention_days: 30
-    gpu_snapshot_retention_days: 30
-    daily_cache_retention_days: 90
-    weekly_cache_retention_weeks: 52
-    error_log_retention_days: 90
-    heartbeat_retention_days: 30
+    raw_retention_days: 3
+    gpu_snapshot_retention_days: 3
+    daily_cache_retention_days: 14
+    weekly_cache_retention_weeks: 12
+    error_log_retention_days: 7
+    heartbeat_retention_days: 7
 
 users:
   alias:
