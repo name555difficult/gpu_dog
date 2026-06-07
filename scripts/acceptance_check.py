@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -38,6 +40,9 @@ def main() -> int:
     for name, command in checks:
         run_check(name, command)
 
+    if shutil.which("systemd-analyze"):
+        run_systemd_verify()
+
     if not args.skip_service:
         run_service_checks(args.config, base_url)
 
@@ -48,6 +53,15 @@ def main() -> int:
 def run_check(name: str, command: list[str]) -> None:
     print(f"==> {name}: {' '.join(command)}")
     subprocess.run(command, check=True)
+
+
+def run_systemd_verify() -> None:
+    source = Path("systemd/gpu-monitor.service")
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / source.name
+        target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        target.chmod(0o644)
+        run_check("systemd verify", ["systemd-analyze", "verify", str(target)])
 
 
 def run_service_checks(config_path: str, base_url: str) -> None:

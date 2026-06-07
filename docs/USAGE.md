@@ -250,10 +250,18 @@ ExecStart=
 安装：
 
 ```bash
+bash scripts/install_systemd.sh
+```
+
+脚本会执行 `systemd-analyze verify`、复制 service 文件、`daemon-reload`、`enable`、`restart` 和 `status`。
+
+也可以手动安装：
+
+```bash
 sudo cp systemd/gpu-monitor.service /etc/systemd/system/gpu-monitor.service
 sudo systemctl daemon-reload
 sudo systemctl enable gpu-monitor
-sudo systemctl start gpu-monitor
+sudo systemctl restart gpu-monitor
 ```
 
 查看状态：

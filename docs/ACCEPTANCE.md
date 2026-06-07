@@ -19,6 +19,7 @@ python3 scripts/acceptance_check.py --config config.yaml
 - 日报缓存生成；
 - 周报缓存生成；
 - 轻量清理；
+- systemd service 语法验证；
 - 启动本地 Dashboard；
 - 请求首页、静态资源和核心 API；
 - 停止临时 Dashboard 服务。
@@ -94,3 +95,5 @@ python3 scripts/smoke_test_dashboard.py --base-url http://127.0.0.1:8765
 ```bash
 python3 scripts/acceptance_check.py --config config.yaml
 ```
+
+如果 `systemd-analyze verify` 输出与宿主机其他 service 相关的权限警告，但最终仍输出 `ACCEPTANCE OK`，说明 GPU Monitor 自身验收通过。
