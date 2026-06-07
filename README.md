@@ -58,9 +58,18 @@ Run tests:
 python3 -m unittest discover -v
 ```
 
+Run the full acceptance check:
+
+```bash
+python3 scripts/acceptance_check.py --config config.yaml
+```
+
 Data and logs use the paths in `config.yaml`. The default development paths are:
 
 - SQLite: `/mnt/ssd1t/gpu_dog/data/monitor.db`
 - logs: `logs/gpu-monitor.log`
 
-Detailed documentation: [docs/USAGE.md](docs/USAGE.md).
+Detailed documentation:
+
+- [docs/USAGE.md](docs/USAGE.md)
+- [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)

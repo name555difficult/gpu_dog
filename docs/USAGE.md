@@ -176,6 +176,12 @@ Dashboard smoke test：
 python3 scripts/smoke_test_dashboard.py --base-url http://127.0.0.1:8765
 ```
 
+完整验收：
+
+```bash
+python3 scripts/acceptance_check.py --config config.yaml
+```
+
 ## 5. 统计口径
 
 用户归因：
@@ -320,6 +326,8 @@ python3 -m unittest discover -v
 - `/day/YYYY-MM-DD` 和 `/week/YYYY-MM-DD` 返回 200；
 - `unittest` 全部通过；
 - systemd 启动后服务能自动恢复。
+
+更详细的验收标准映射见 [ACCEPTANCE.md](ACCEPTANCE.md)。
 
 ## 9. 故障排查
 

@@ -28,6 +28,10 @@ function table(headers, rows) {
   return `<table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
 }
 
+function emptyState(message) {
+  return `<div class="status-line">${escapeHtml(message)}</div>`;
+}
+
 function gpuRows(gpus) {
   return gpus.map((gpu) => {
     const total = Number(gpu.total_memory_mb || 0);
@@ -94,7 +98,7 @@ function renderToday(current, today) {
     </section>
     <section class="section">
       <h3>Current Users</h3>
-      ${table(["User", "GPUs", "Processes", "Memory", "Duration"], userRows(current.users || []))}
+      ${(current.users || []).length ? table(["User", "GPUs", "Processes", "Memory", "Duration"], userRows(current.users || [])) : emptyState("当前无 GPU 使用")}
     </section>
     <section class="section">
       <h3>Today Detail</h3>
