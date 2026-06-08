@@ -7,6 +7,7 @@ web:
   host: "127.0.0.1"
   port: 8765
   refresh_interval_seconds: 60
+  max_issue_items: 5
 
 collector:
   backend: "nvidia-smi"

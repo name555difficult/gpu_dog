@@ -15,10 +15,19 @@ def main() -> int:
     for path in ["/api/health", "/api/current", "/api/today"]:
         payload = _request_json(base + path)
         print(path, "ok", sorted(payload.keys())[:8])
+    for path in ["/export/day", "/export/week"]:
+        body = _request_text(base + path)
+        if not body.startswith("# GPU "):
+            raise RuntimeError(f"{path} did not return markdown")
+        print(path, "ok", body.splitlines()[0])
     return 0
 
 
 def _request_json(url: str) -> dict:
+    return json.loads(_request_text(url))
+
+
+def _request_text(url: str) -> str:
     parsed = urlparse(url)
     if parsed.scheme != "http":
         raise ValueError("Only http:// URLs are supported")
@@ -43,7 +52,7 @@ def _request_json(url: str) -> dict:
     status_line = headers.splitlines()[0]
     if " 200 " not in status_line:
         raise RuntimeError(f"{url} returned {status_line}")
-    return json.loads(body)
+    return body
 
 
 if __name__ == "__main__":

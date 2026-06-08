@@ -82,6 +82,8 @@ def run_service_checks(config_path: str, base_url: str) -> None:
             "/api/today",
             "/api/day?date=2026-06-07",
             "/api/week?date=2026-06-07",
+            "/export/day?date=2026-06-07",
+            "/export/week?date=2026-06-07",
             "/day/2026-06-07",
             "/week/2026-06-07",
             "/static/app.js",
@@ -98,6 +100,8 @@ def run_service_checks(config_path: str, base_url: str) -> None:
                     require_keys(payload, ["overview", "users", "gpus", "user_gpu"])
                 if endpoint == "/api/health":
                     require_keys(payload, ["status", "counts", "latest_sample_time", "storage"])
+            if endpoint.startswith("/export/") and not response.body.startswith("# GPU "):
+                raise AssertionError(f"{endpoint} did not return markdown")
         print("==> service endpoints: ok")
     finally:
         process.terminate()

@@ -150,6 +150,39 @@ nav a,
   font-size: 16px;
 }
 
+.issue-group {
+  margin-top: 12px;
+}
+
+.issue-group:first-of-type {
+  margin-top: 0;
+}
+
+.issue-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.issue-heading h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.issue-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.issue-group:not(.expanded) .issue-extra {
+  display: none;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

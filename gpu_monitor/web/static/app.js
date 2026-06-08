@@ -3,6 +3,7 @@ const body = document.body;
 const mode = body.dataset.mode;
 const value = body.dataset.value;
 const refreshSeconds = Number(body.dataset.refresh || "60");
+const maxIssueItems = Math.max(1, Number(body.dataset.maxIssues || "5"));
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -125,6 +126,7 @@ function renderDay(summary) {
       <div>
         <input id="dayInput" type="date" value="${summary.report_date}">
         <button class="button" id="openDay">Open</button>
+        <button class="button" id="exportDay">Export MD</button>
       </div>
     </div>
     <div class="grid">
@@ -145,6 +147,10 @@ function renderDay(summary) {
     const v = document.getElementById("dayInput").value;
     if (v) window.location.href = `/day/${v}`;
   };
+  document.getElementById("exportDay").onclick = () => {
+    const v = document.getElementById("dayInput").value;
+    if (v) window.location.href = `/export/day?date=${encodeURIComponent(v)}`;
+  };
 }
 
 function renderWeek(summary) {
@@ -155,6 +161,7 @@ function renderWeek(summary) {
       <div>
         <input id="weekInput" type="date" value="${summary.week_start}">
         <button class="button" id="openWeek">Open</button>
+        <button class="button" id="exportWeek">Export MD</button>
       </div>
     </div>
     <div class="grid">
@@ -179,6 +186,10 @@ function renderWeek(summary) {
     const v = document.getElementById("weekInput").value;
     if (v) window.location.href = `/week/${v}`;
   };
+  document.getElementById("exportWeek").onclick = () => {
+    const v = document.getElementById("weekInput").value;
+    if (v) window.location.href = `/export/week?date=${encodeURIComponent(v)}`;
+  };
 }
 
 function renderHealth(health) {
@@ -201,15 +212,64 @@ function renderHealth(health) {
 }
 
 function renderIssues(summary) {
-  const gaps = summary.heartbeat_gaps || [];
+  const gaps = [...(summary.heartbeat_gaps || [])].reverse();
   const errors = summary.errors || [];
-  if (!gaps.length && !errors.length) return "";
+  const groups = [
+    renderIssueGroup(
+      "heartbeat-gaps",
+      "Heartbeat Gaps",
+      ["Start", "End", "Gap"],
+      gaps.map((g) => [g.start_time, g.end_time, g.gap_human]),
+    ),
+    renderIssueGroup(
+      "errors",
+      "Errors",
+      ["Time", "Type", "Severity", "Message"],
+      errors.map((e) => [e.event_time, e.event_type, e.severity, e.message]),
+    ),
+  ].filter(Boolean);
+  if (!groups.length) return "";
   return `<section class="section">
     <h3>Issues</h3>
-    ${gaps.length ? table(["Start", "End", "Gap"], gaps.map((g) => `<tr><td>${escapeHtml(g.start_time)}</td><td>${escapeHtml(g.end_time)}</td><td>${escapeHtml(g.gap_human)}</td></tr>`)) : ""}
-    ${errors.length ? table(["Time", "Type", "Severity", "Message"], errors.map((e) => `<tr><td>${escapeHtml(e.event_time)}</td><td>${escapeHtml(e.event_type)}</td><td>${escapeHtml(e.severity)}</td><td>${escapeHtml(e.message)}</td></tr>`)) : ""}
+    ${groups.join("")}
   </section>`;
 }
+
+function renderIssueGroup(id, title, headers, rows) {
+  if (!rows.length) return "";
+  const needsToggle = rows.length > maxIssueItems;
+  const bodyRows = rows.map((row, index) => {
+    const hiddenClass = needsToggle && index >= maxIssueItems ? ' class="issue-extra"' : "";
+    return `<tr${hiddenClass}>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`;
+  });
+  const label = needsToggle
+    ? `<span class="muted issue-count">Showing latest ${maxIssueItems} of ${rows.length}</span>`
+    : `<span class="muted">${rows.length} record${rows.length === 1 ? "" : "s"}</span>`;
+  const toggle = needsToggle
+    ? `<button class="button issue-toggle" data-target="${id}" data-total="${rows.length}">Show all (${rows.length})</button>`
+    : "";
+  return `<div id="${id}" class="issue-group">
+    <div class="issue-heading">
+      <h4>${escapeHtml(title)}</h4>
+      <div class="issue-actions">${label}${toggle}</div>
+    </div>
+    ${table(headers, bodyRows)}
+  </div>`;
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const button = target.closest(".issue-toggle");
+  if (!button) return;
+  const group = document.getElementById(button.dataset.target || "");
+  if (!group) return;
+  const expanded = group.classList.toggle("expanded");
+  const total = Number(button.dataset.total || "0");
+  button.textContent = expanded ? "Collapse" : `Show all (${total})`;
+  const count = group.querySelector(".issue-count");
+  if (count) count.textContent = expanded ? `Showing all ${total}` : `Showing latest ${maxIssueItems} of ${total}`;
+});
 
 async function load() {
   try {

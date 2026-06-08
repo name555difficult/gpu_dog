@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
 from gpu_monitor.analyzer.weekly_analyzer import WeeklyAnalyzer
 from gpu_monitor.config import Config
+from gpu_monitor.reports.markdown_export import daily_to_markdown, weekly_to_markdown
 from gpu_monitor.reports.json_cache import ReportCache
 from gpu_monitor.storage.database import Database
 from gpu_monitor.utils.time_utils import date_range, isoformat, now_local, parse_local_date, week_bounds
@@ -104,6 +105,21 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/health":
             self._send_json(health_status(self.app_database, self.app_config))
             return
+        if path == "/export/day":
+            day = _first_query_value(query, "date") or now_local(self.app_config.app.timezone).date().isoformat()
+            summary = day_summary(self.app_database, self.app_config, day)
+            self._send_markdown(daily_to_markdown(summary), f"gpu-monitor-day-{summary['report_date']}.md")
+            return
+        if path == "/export/week":
+            value = (
+                _first_query_value(query, "date")
+                or _first_query_value(query, "start")
+                or now_local(self.app_config.app.timezone).date().isoformat()
+            )
+            summary = week_summary(self.app_database, self.app_config, value)
+            filename = f"gpu-monitor-week-{summary['week_start']}_{summary['week_end']}.md"
+            self._send_markdown(weekly_to_markdown(summary), filename)
+            return
 
         self._send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
@@ -120,6 +136,16 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_response(status.value)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
+    def _send_markdown(self, body: str, filename: str, status: HTTPStatus = HTTPStatus.OK) -> None:
+        encoded = body.encode("utf-8")
+        self.send_response(status.value)
+        self.send_header("Content-Type", "text/markdown; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.send_header("Content-Length", str(len(encoded)))
         self.end_headers()
         self.wfile.write(encoded)
@@ -376,7 +402,7 @@ def _html_shell(mode: str, value: str | None, config: Config) -> str:
   <title>{config.app.server_name} GPU Monitor</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body data-mode="{mode}" data-value="{data_value}" data-refresh="{config.web.refresh_interval_seconds}">
+<body data-mode="{mode}" data-value="{data_value}" data-refresh="{config.web.refresh_interval_seconds}" data-max-issues="{config.web.max_issue_items}">
   <header class="topbar">
     <div>
       <h1>{config.app.server_name}</h1>

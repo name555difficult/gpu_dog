@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
 from gpu_monitor.analyzer.weekly_analyzer import WeeklyAnalyzer
+from gpu_monitor.reports.markdown_export import daily_to_markdown, weekly_to_markdown
 from gpu_monitor.reports.json_cache import ReportCache
 from gpu_monitor.web.dashboard import current_snapshot, day_summary, health_status, today_summary, week_summary
 from tests.helpers import TempProject, seed_sample_data
@@ -32,6 +33,22 @@ class ReportsAndWebTest(unittest.TestCase):
         self.assertIn("storage", health)
         self.assertEqual(day["report_type"], "daily")
         self.assertEqual(week["report_type"], "weekly")
+
+    def test_markdown_exports_include_report_tables(self) -> None:
+        with TempProject() as (config, database):
+            seed_sample_data(database)
+            daily = day_summary(database, config, "2026-06-07")
+            weekly = week_summary(database, config, "2026-06-07")
+
+        daily_markdown = daily_to_markdown(daily)
+        weekly_markdown = weekly_to_markdown(weekly)
+
+        self.assertIn("# GPU Daily Report - 2026-06-07", daily_markdown)
+        self.assertIn("| User | GPU | Sessions | Duration | Avg Memory | Peak Memory |", daily_markdown)
+        self.assertIn("Alice", daily_markdown)
+        self.assertNotIn("## Issues", daily_markdown)
+        self.assertIn("# GPU Weekly Report - 2026-06-01 to 2026-06-07", weekly_markdown)
+        self.assertIn("| Date | Users | GPUs | Usage | Heartbeat Gaps | Errors |", weekly_markdown)
 
     def test_today_summary_uses_latest_sample_cache(self) -> None:
         fake_now = datetime(2026, 6, 7, 12, 0, tzinfo=ZoneInfo("Asia/Shanghai"))

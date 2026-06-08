@@ -12,6 +12,7 @@ class StorageOptimizationTest(unittest.TestCase):
         config = parse_config({})
 
         self.assertEqual(config.web.refresh_interval_seconds, 60)
+        self.assertEqual(config.web.max_issue_items, 5)
         self.assertEqual(config.collector.sample_interval_seconds, 60)
         self.assertTrue(config.storage.cleanup.compact_after_cleanup)
         self.assertEqual(config.storage.cleanup.compact_min_freelist_ratio, 0.15)

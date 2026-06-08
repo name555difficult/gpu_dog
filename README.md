@@ -10,6 +10,7 @@ Implemented capabilities:
 - localhost Dashboard at `http://127.0.0.1:8765`
 - APIs for current state, today, day, week, and health
 - daily and weekly JSON cache generation
+- daily and weekly Markdown export
 - lightweight retention cleanup and SQLite compaction
 - systemd service template
 - standard-library `unittest` coverage

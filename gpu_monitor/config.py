@@ -19,6 +19,7 @@ class WebConfig:
     host: str
     port: int
     refresh_interval_seconds: int
+    max_issue_items: int
 
 
 @dataclass(frozen=True)
@@ -111,6 +112,7 @@ def parse_config(raw: dict[str, Any]) -> Config:
             host=str(web.get("host", "127.0.0.1")),
             port=int(web.get("port", 8765)),
             refresh_interval_seconds=int(web.get("refresh_interval_seconds", 60)),
+            max_issue_items=int(web.get("max_issue_items", 5)),
         ),
         collector=CollectorConfig(
             backend=str(collector.get("backend", "nvidia-smi")),

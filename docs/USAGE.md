@@ -13,6 +13,7 @@ GPU Monitor 是一个单机 GPU 使用监控服务，适合多人共享的训练
 - 将原始进程采样、GPU 快照、heartbeat、异常事件写入 SQLite；
 - 提供 `http://127.0.0.1:8765` 本地 Dashboard；
 - 提供当前状态、当天统计、日报、周报和健康检查 API；
+- 日报/周报页面支持导出 Markdown；
 - 自动生成日报/周报 JSON 缓存；
 - 启动时补偿最近遗漏的日报/周报缓存；
 - 每天执行轻量保留策略清理；
@@ -46,6 +47,7 @@ web:
   host: "127.0.0.1"
   port: 8765
   refresh_interval_seconds: 60
+  max_issue_items: 5
 
 collector:
   backend: "nvidia-smi"
@@ -76,6 +78,7 @@ storage:
 - 周报 JSON 缓存保留 12 周；
 - heartbeat 和异常日志保留 7 天。
 - cleanup 后如果 SQLite 空闲页比例超过 15%，自动执行压缩。
+- Dashboard 的 Issues 区域默认每类只展示最新 5 条，可在页面上展开全部。
 
 用户别名可选配置：
 
@@ -181,6 +184,8 @@ http://localhost:8765
 - `/week/YYYY-MM-DD`：该日期所在自然周周报；
 - `/health`：健康状态页面。
 
+日报和周报页面右上角的 `Export MD` 按钮会下载 Markdown 文件。Markdown 导出保留错误和 heartbeat gap 计数，但不导出详细 Issues 列表。
+
 API：
 
 - `/api/current`：最新 GPU 快照；
@@ -188,6 +193,8 @@ API：
 - `/api/day?date=YYYY-MM-DD`：指定日期统计；
 - `/api/week?date=YYYY-MM-DD`：指定自然周统计；
 - `/api/health`：数据库、采集、heartbeat 健康信息。
+- `/export/day?date=YYYY-MM-DD`：导出指定日期日报 Markdown；
+- `/export/week?date=YYYY-MM-DD`：导出指定自然周周报 Markdown。
 
 Dashboard smoke test：
 
