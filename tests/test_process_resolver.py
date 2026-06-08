@@ -19,14 +19,14 @@ class _FakeProcess:
 class ProcessResolverTest(unittest.TestCase):
     def test_uses_cached_username_when_pid_disappears(self) -> None:
         resolver = ProcessResolver()
-        with patch("gpu_monitor.collector.process_resolver.psutil.Process", return_value=_FakeProcess("yzt")):
-            self.assertEqual(resolver.username_for_pid(123), "yzt")
+        with patch("gpu_monitor.collector.process_resolver.psutil.Process", return_value=_FakeProcess("alice")):
+            self.assertEqual(resolver.username_for_pid(123), "alice")
 
         with patch(
             "gpu_monitor.collector.process_resolver.psutil.Process",
             side_effect=psutil.NoSuchProcess(pid=123),
         ):
-            self.assertEqual(resolver.username_for_pid(123), "yzt")
+            self.assertEqual(resolver.username_for_pid(123), "alice")
 
 
 if __name__ == "__main__":

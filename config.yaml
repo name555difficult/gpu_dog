@@ -23,7 +23,7 @@ heartbeat:
   missing_threshold_seconds: 300
 
 reports:
-  cache_dir: "/mnt/ssd1t/gpu_dog/data/reports"
+  cache_dir: "data/reports"
   daily:
     generate_time: "00:05"
   weekly:
@@ -31,7 +31,7 @@ reports:
     generate_time: "00:10"
 
 storage:
-  sqlite_path: "/mnt/ssd1t/gpu_dog/data/monitor.db"
+  sqlite_path: "data/monitor.db"
   cleanup:
     raw_retention_days: 3
     gpu_snapshot_retention_days: 3

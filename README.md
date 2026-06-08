@@ -73,10 +73,11 @@ python3 scripts/acceptance_check.py --config config.yaml
 
 Data and logs use the paths in `config.yaml`. The default development paths are:
 
-- SQLite: `/mnt/ssd1t/gpu_dog/data/monitor.db`
+- SQLite: `data/monitor.db`
 - logs: `logs/gpu-monitor.log`
 
 Detailed documentation:
 
 - [docs/USAGE.md](docs/USAGE.md)
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)

@@ -85,7 +85,7 @@ storage:
 ```yaml
 users:
   alias:
-    wzb: "王志斌"
+    alice: "Alice"
     unknown: "未知用户"
 ```
 
@@ -165,7 +165,7 @@ python3 -m unittest discover -v
 http://127.0.0.1:8765
 ```
 
-远程机器访问推荐使用 SSH 端口转发：
+远程机器访问推荐使用 VSCode Remote SSH 或 SSH 端口转发，不直接开放 `服务器IP:8765`：
 
 ```bash
 ssh -L 8765:127.0.0.1:8765 user@server
@@ -260,17 +260,26 @@ unknown
 
 ## 6. systemd 部署
 
+推荐部署方式：
+
+- 使用 `systemd` 托管服务，实现开机自启和异常自动恢复；
+- `config.yaml` 保持 `web.host: "127.0.0.1"`；
+- 用户通过 VSCode Remote SSH 的 Ports 面板，或 SSH `-L` 端口转发访问；
+- 不需要开放防火墙端口 `8765/tcp`，也不建议改成 `web.host: "0.0.0.0"`。
+
+完整部署教程见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
 仓库提供模板：
 
 ```bash
 systemd/gpu-monitor.service
 ```
 
-如果项目路径不是 `/mnt/ssd1t/gpu_dog`，先修改 service 文件中的：
+service 模板使用 `__PROJECT_DIR__` 占位符。安装脚本会自动渲染为当前项目绝对路径，一般不需要手动修改：
 
 ```ini
-WorkingDirectory=
-ExecStart=
+WorkingDirectory=__PROJECT_DIR__
+ExecStart=/usr/bin/python3 -m gpu_monitor.main --config config.yaml run
 ```
 
 安装：
@@ -284,7 +293,9 @@ bash scripts/install_systemd.sh
 也可以手动安装：
 
 ```bash
-sudo cp systemd/gpu-monitor.service /etc/systemd/system/gpu-monitor.service
+PROJECT_DIR="$(pwd)"
+sed "s#__PROJECT_DIR__#${PROJECT_DIR}#g" systemd/gpu-monitor.service > /tmp/gpu-monitor.service
+sudo install -m 0644 /tmp/gpu-monitor.service /etc/systemd/system/gpu-monitor.service
 sudo systemctl daemon-reload
 sudo systemctl enable gpu-monitor
 sudo systemctl restart gpu-monitor
@@ -296,6 +307,15 @@ sudo systemctl restart gpu-monitor
 sudo systemctl status gpu-monitor
 sudo journalctl -u gpu-monitor -f
 ```
+
+部署完成后，服务器本机验证：
+
+```bash
+curl http://127.0.0.1:8765/api/health
+ss -ltnp | grep ':8765'
+```
+
+`ss` 输出应显示监听在 `127.0.0.1:8765`，而不是 `0.0.0.0:8765`。
 
 重启：
 
@@ -314,10 +334,10 @@ sudo systemctl stop gpu-monitor
 默认开发路径：
 
 ```text
-SQLite: /mnt/ssd1t/gpu_dog/data/monitor.db
-日报缓存: /mnt/ssd1t/gpu_dog/data/reports/daily/
-周报缓存: /mnt/ssd1t/gpu_dog/data/reports/weekly/
-日志: /mnt/ssd1t/gpu_dog/logs/gpu-monitor.log
+SQLite: data/monitor.db
+日报缓存: data/reports/daily/
+周报缓存: data/reports/weekly/
+日志: logs/gpu-monitor.log
 ```
 
 `data/` 和 `logs/` 已被 `.gitignore` 排除，不会进入 Git。
@@ -390,7 +410,7 @@ web:
 数据库路径无权限：
 
 ```bash
-ls -ld /mnt/ssd1t/gpu_dog/data
+ls -ld data
 ```
 
 确保运行用户可以写入 `storage.sqlite_path` 的父目录。

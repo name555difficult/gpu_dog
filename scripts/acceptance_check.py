@@ -60,7 +60,8 @@ def run_systemd_verify() -> None:
     source = Path("systemd/gpu-monitor.service")
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp) / source.name
-        target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        rendered = source.read_text(encoding="utf-8").replace("__PROJECT_DIR__", str(ROOT))
+        target.write_text(rendered, encoding="utf-8")
         target.chmod(0o644)
         run_check("systemd verify", ["systemd-analyze", "verify", str(target)])
 

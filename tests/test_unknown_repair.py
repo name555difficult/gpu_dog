@@ -25,7 +25,7 @@ class UnknownRepairTest(unittest.TestCase):
                             2,
                             "GPU-2",
                             736961,
-                            "yzt",
+                            "alice",
                             "python",
                             1230,
                             "2026-06-08T09:14:59+08:00",
@@ -53,7 +53,7 @@ class UnknownRepairTest(unittest.TestCase):
                 ).fetchone()
 
         self.assertEqual(len(repairs), 1)
-        self.assertEqual(row["username"], "yzt")
+        self.assertEqual(row["username"], "alice")
         self.assertEqual(row["process_name"], "python")
 
 
