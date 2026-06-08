@@ -357,6 +357,8 @@ sudo systemctl status gpu-monitor.service --no-pager
 sudo journalctl -u gpu-monitor.service -n 100 --no-pager
 ```
 
+跨服务器部署时遇到的 Python 3.8、systemd 环境、权限和验收脚本问题，见 [DEBUG.md](DEBUG.md)。
+
 端口被占用：
 
 ```bash

@@ -81,3 +81,4 @@ Detailed documentation:
 - [docs/USAGE.md](docs/USAGE.md)
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)
+- [docs/DEBUG.md](docs/DEBUG.md)

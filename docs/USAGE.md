@@ -393,6 +393,8 @@ python3 -m unittest discover -v
 
 ## 9. 故障排查
 
+跨服务器部署时遇到的 Python 3.8、systemd 环境、权限和验收脚本问题，见 [DEBUG.md](DEBUG.md)。
+
 `nvidia-smi` 失败：
 
 ```bash
