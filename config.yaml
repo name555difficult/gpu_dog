@@ -6,11 +6,11 @@ web:
   enabled: true
   host: "127.0.0.1"
   port: 8765
-  refresh_interval_seconds: 30
+  refresh_interval_seconds: 60
 
 collector:
   backend: "nvidia-smi"
-  sample_interval_seconds: 30
+  sample_interval_seconds: 60
   active_memory_threshold_mb: 100
   command_timeout_seconds: 10
 
@@ -38,6 +38,8 @@ storage:
     weekly_cache_retention_weeks: 12
     error_log_retention_days: 7
     heartbeat_retention_days: 7
+    compact_after_cleanup: true
+    compact_min_freelist_ratio: 0.15
 
 users:
   alias:

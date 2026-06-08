@@ -10,7 +10,7 @@ Implemented capabilities:
 - localhost Dashboard at `http://127.0.0.1:8765`
 - APIs for current state, today, day, week, and health
 - daily and weekly JSON cache generation
-- lightweight retention cleanup
+- lightweight retention cleanup and SQLite compaction
 - systemd service template
 - standard-library `unittest` coverage
 
@@ -32,6 +32,12 @@ Run the full service:
 
 ```bash
 python3 -m gpu_monitor.main --config config.yaml run
+```
+
+Compact SQLite storage manually:
+
+```bash
+python3 -m gpu_monitor.main --config config.yaml compact-db
 ```
 
 Open the Dashboard on the server:

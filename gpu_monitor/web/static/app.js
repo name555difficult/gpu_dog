@@ -2,7 +2,7 @@ const app = document.getElementById("app");
 const body = document.body;
 const mode = body.dataset.mode;
 const value = body.dataset.value;
-const refreshSeconds = Number(body.dataset.refresh || "30");
+const refreshSeconds = Number(body.dataset.refresh || "60");
 
 function escapeHtml(value) {
   return String(value ?? "")

@@ -29,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("collect-once", help="Run one GPU collection cycle and exit")
     subparsers.add_parser("run", help="Run collector, heartbeat, dashboard, and scheduler loops")
     subparsers.add_parser("status", help="Print database row counts")
+    subparsers.add_parser("compact-db", help="Checkpoint and vacuum SQLite storage")
 
     daily_parser = subparsers.add_parser("generate-daily", help="Generate daily JSON cache")
     daily_parser.add_argument("--date", help="Date in YYYY-MM-DD format; defaults to today")
@@ -71,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "status":
         logger.info("Database row counts: %s", repository.latest_counts())
+        logger.info("Database storage stats: %s", database.storage_stats())
         return 0
 
     if command == "generate-daily":
@@ -87,6 +89,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if command == "cleanup":
         logger.info("Cleanup result: %s", CleanupManager(database, config).run())
+        return 0
+
+    if command == "compact-db":
+        logger.info("Compact result: %s", database.compact())
         return 0
 
     if command == "repair-unknown-users":
@@ -107,6 +113,7 @@ def collect_once(
     config: Config,
     repository: MonitorRepository,
     collector: NvidiaSmiCollector | None = None,
+    record_success_heartbeat: bool = True,
 ) -> None:
     if config.collector.backend != "nvidia-smi":
         raise ValueError(f"Unsupported collector backend: {config.collector.backend}")
@@ -117,7 +124,8 @@ def collect_once(
     try:
         result = collector.collect()
         repository.insert_collection(result)
-        repository.insert_heartbeat("ok", f"Collected {len(result.samples)} process samples")
+        if record_success_heartbeat:
+            repository.insert_heartbeat("ok", f"Collected {len(result.samples)} process samples")
         logger.info(
             "Collected %s GPU snapshots and %s process samples at %s",
             len(result.snapshots),
@@ -191,7 +199,7 @@ def _collector_loop(config: Config, repository: MonitorRepository, stop_event: t
     collector = build_collector(config)
     while not stop_event.is_set():
         start = time.monotonic()
-        collect_once(config, repository, collector=collector)
+        collect_once(config, repository, collector=collector, record_success_heartbeat=False)
         elapsed = time.monotonic() - start
         sleep_seconds = max(0.0, config.collector.sample_interval_seconds - elapsed)
         if elapsed > config.collector.sample_interval_seconds:

@@ -25,8 +25,8 @@ def configure_logging(log_path: str | Path = "logs/gpu-monitor.log", level: str 
 
     file_handler = RotatingFileHandler(
         path,
-        maxBytes=50 * 1024 * 1024,
-        backupCount=5,
+        maxBytes=5 * 1024 * 1024,
+        backupCount=3,
         encoding="utf-8",
     )
     file_handler.setFormatter(formatter)

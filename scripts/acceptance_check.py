@@ -35,6 +35,7 @@ def main() -> int:
         ("generate daily", [sys.executable, "-m", "gpu_monitor.main", "--config", args.config, "generate-daily", "--force"]),
         ("generate weekly", [sys.executable, "-m", "gpu_monitor.main", "--config", args.config, "generate-weekly", "--force"]),
         ("cleanup", [sys.executable, "-m", "gpu_monitor.main", "--config", args.config, "cleanup"]),
+        ("compact db", [sys.executable, "-m", "gpu_monitor.main", "--config", args.config, "compact-db"]),
     ]
 
     for name, command in checks:
@@ -96,7 +97,7 @@ def run_service_checks(config_path: str, base_url: str) -> None:
                 if endpoint == "/api/today":
                     require_keys(payload, ["overview", "users", "gpus", "user_gpu"])
                 if endpoint == "/api/health":
-                    require_keys(payload, ["status", "counts", "latest_sample_time"])
+                    require_keys(payload, ["status", "counts", "latest_sample_time", "storage"])
         print("==> service endpoints: ok")
     finally:
         process.terminate()

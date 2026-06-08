@@ -121,19 +121,19 @@ mem(U, G, t) = 用户 U 在 GPU G 上所有进程显存占用之和
 默认采样频率：
 
 ```text
-30 秒采样一次
+60 秒采样一次
 ```
 
 需要配置化，允许后续调整：
 
 ```yaml
 collector:
-  sample_interval_seconds: 30
+  sample_interval_seconds: 60
 ```
 
 说明：
 
-- 30 秒采样适合大多数深度学习训练任务；
+- 60 秒采样适合轻量多人共享 GPU 监控；
 - 短于采样间隔的瞬时任务可能无法被记录；
 - Dashboard 和历史统计中应注明采样间隔，避免误读统计结果；
 - 页面刷新频率默认与采样频率一致。
@@ -157,7 +157,7 @@ SQLite
 - 适合单机服务器监控；
 - 支持事务；
 - 可配合 WAL 模式增强可靠性；
-- 足够支撑 30 秒级采样的数据量；
+- 足够支撑 60 秒级采样的数据量；
 - 便于 Dashboard 直接查询近期历史数据。
 
 ---
@@ -295,7 +295,7 @@ Dashboard 和历史统计中以 GPU index 作为主要展示标识。
 
 | 功能 | 说明 |
 |---|---|
-| GPU 采集 | 每 30 秒采集 GPU 进程信息 |
+| GPU 采集 | 每 60 秒采集 GPU 进程信息 |
 | 用户归因 | 根据 PID 反查 Linux 用户名 |
 | 数据持久化 | 将采样数据实时写入 SQLite |
 | 实时 Dashboard | 通过 localhost 页面查看当前和当天 GPU 使用情况 |
@@ -323,7 +323,7 @@ Dashboard 和历史统计中以 GPU index 作为主要展示标识。
 | 多服务器集中监控 | 初版面向单台服务器 |
 | Slurm 用户归因 | 初版按 Linux 用户名归因 |
 | Docker 内真实用户识别 | 初版按宿主机 PID owner 归因 |
-| 秒级精准短任务审计 | 30 秒采样无法保证捕获极短任务 |
+| 秒级精准短任务审计 | 60 秒采样无法保证捕获极短任务 |
 | GPU index 变更追踪 | Dashboard 按 `nvidia-smi` index 展示 |
 | 实时告警 | 初版聚焦实时查看和历史统计，不做主动告警 |
 
@@ -341,7 +341,7 @@ Dashboard 和历史统计中以 GPU index 作为主要展示标识。
 | 本地数据库 | SQLite | 单机轻量持久化 |
 | Web 服务 | Python 标准库 `http.server` | 无额外 Web 依赖，符合轻量目标 |
 | 页面渲染 | 原生 HTML/CSS/JavaScript | 页面由静态资源和 API 组合渲染 |
-| 前端交互 | 原生 JavaScript fetch | 30 秒轮询即可满足实时查看 |
+| 前端交互 | 原生 JavaScript fetch | 60 秒轮询即可满足实时查看 |
 | 调度 | Python 线程内简单调度器 | 无额外调度依赖，执行日报/周报缓存和清理 |
 | 后台服务 | systemd | 自启动、异常重启、日志管理 |
 | 配置管理 | `config.yaml` + `.env` | 非敏感配置放 yaml，可选环境变量覆盖 |
@@ -1065,7 +1065,7 @@ API 返回 JSON，页面用 `fetch` 轮询刷新。
 
 ```text
 页面每 refresh_interval_seconds 请求 /api/current 和 /api/today
-默认 refresh_interval_seconds = 30
+默认 refresh_interval_seconds = 60
 ```
 
 初版不使用 WebSocket。
@@ -1131,7 +1131,7 @@ API 返回 JSON，页面用 `fetch` 轮询刷新。
 GPU 使用日报
 日期：YYYY-MM-DD
 服务器：server-name
-采样间隔：30 秒
+采样间隔：60 秒
 统计口径：Linux 用户名归因；显存占用 >= 100 MB 视为活跃使用
 
 一、总览
@@ -1241,7 +1241,7 @@ YYYY-MM-DD
 
 | 任务 | 频率 | 说明 |
 |---|---:|---|
-| GPU 采集 | 每 30 秒 | 采集 GPU 进程数据 |
+| GPU 采集 | 每 60 秒 | 采集 GPU 进程数据 |
 | 心跳写入 | 每 60 秒 | 标记服务存活 |
 | Web Dashboard | 常驻 | 提供页面和 API |
 | 清理任务 | 每天 01:00 | 清理超过保留周期的数据 |
@@ -1484,11 +1484,11 @@ web:
   enabled: true
   host: "127.0.0.1"
   port: 8765
-  refresh_interval_seconds: 30
+  refresh_interval_seconds: 60
 
 collector:
   backend: "nvidia-smi"
-  sample_interval_seconds: 30
+  sample_interval_seconds: 60
   active_memory_threshold_mb: 100
   command_timeout_seconds: 10
 
@@ -1887,8 +1887,8 @@ sudo chmod 640 /etc/gpu-monitor/config.yaml
 
 ### 24.1 采集验收
 
-- 服务启动后 30 秒内开始采集；
-- 每 30 秒写入一次当前 GPU 使用状态；
+- 服务启动后立即开始首次采集；
+- 每 60 秒写入一次当前 GPU 使用状态；
 - 无 GPU 进程时不误报用户使用；
 - 多用户同卡时能够分别归因；
 - 同一用户多进程时能够合并显存。
@@ -1901,7 +1901,7 @@ sudo chmod 640 /etc/gpu-monitor/config.yaml
 - 首页展示最近成功采样时间；
 - 首页展示当前每张 GPU 的状态；
 - 首页展示当前活跃用户和进程；
-- 页面每 30 秒刷新当前状态；
+- 页面每 60 秒刷新当前状态；
 - 采集异常时页面显示最近错误摘要；
 - 无 GPU 使用时页面清楚显示“当前无 GPU 使用”。
 
@@ -1945,7 +1945,7 @@ sudo chmod 640 /etc/gpu-monitor/config.yaml
 目标：
 
 ```text
-能够每 30 秒采集 GPU 进程、PID、显存，并解析 Linux 用户名。
+能够每 60 秒采集 GPU 进程、PID、显存，并解析 Linux 用户名。
 ```
 
 任务：
@@ -1982,7 +1982,7 @@ sudo chmod 640 /etc/gpu-monitor/config.yaml
 2. 实现 `/api/current`；
 3. 实现 `/api/health`；
 4. 实现首页模板；
-5. 实现前端 30 秒轮询刷新；
+5. 实现前端 60 秒轮询刷新；
 6. 展示 GPU 当前状态；
 7. 展示当前活跃用户和进程；
 8. 展示最近采样时间和最近错误。
@@ -2147,7 +2147,7 @@ Dashboard 可查看上一自然周和历史自然周 GPU 使用统计。
 | 磁盘空间不足 | 记录严重异常，停止非必要写入，等待人工处理 |
 | 日报缓存缺失但原始数据存在 | 补生成日报缓存 |
 | 日报缓存缺失且原始数据已清理 | 周报中标记该日数据缺失 |
-| 短于 30 秒任务 | 可能漏记，Dashboard 中注明采样限制 |
+| 短于 60 秒任务 | 可能漏记，Dashboard 中注明采样限制 |
 
 ---
 

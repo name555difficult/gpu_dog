@@ -68,6 +68,16 @@ class CleanupManager:
             result["daily_reports"] = len(daily_rows)
             result["weekly_reports"] = len(weekly_rows)
 
+        storage_stats = self.database.storage_stats()
+        result["storage"] = storage_stats
+        if (
+            cleanup.compact_after_cleanup
+            and storage_stats["freelist_ratio"] >= cleanup.compact_min_freelist_ratio
+        ):
+            result["compact"] = self.database.compact()
+        else:
+            result["compact"] = None
+
         logger.info("Cleanup completed: %s", result)
         return result
 

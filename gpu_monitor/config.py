@@ -56,6 +56,8 @@ class CleanupConfig:
     weekly_cache_retention_weeks: int
     error_log_retention_days: int
     heartbeat_retention_days: int
+    compact_after_cleanup: bool
+    compact_min_freelist_ratio: float
 
 
 @dataclass(frozen=True)
@@ -108,11 +110,11 @@ def parse_config(raw: dict[str, Any]) -> Config:
             enabled=bool(web.get("enabled", True)),
             host=str(web.get("host", "127.0.0.1")),
             port=int(web.get("port", 8765)),
-            refresh_interval_seconds=int(web.get("refresh_interval_seconds", 30)),
+            refresh_interval_seconds=int(web.get("refresh_interval_seconds", 60)),
         ),
         collector=CollectorConfig(
             backend=str(collector.get("backend", "nvidia-smi")),
-            sample_interval_seconds=int(collector.get("sample_interval_seconds", 30)),
+            sample_interval_seconds=int(collector.get("sample_interval_seconds", 60)),
             active_memory_threshold_mb=int(collector.get("active_memory_threshold_mb", 100)),
             command_timeout_seconds=int(collector.get("command_timeout_seconds", 10)),
         ),
@@ -138,6 +140,8 @@ def parse_config(raw: dict[str, Any]) -> Config:
                 weekly_cache_retention_weeks=int(cleanup.get("weekly_cache_retention_weeks", 12)),
                 error_log_retention_days=int(cleanup.get("error_log_retention_days", 7)),
                 heartbeat_retention_days=int(cleanup.get("heartbeat_retention_days", 7)),
+                compact_after_cleanup=bool(cleanup.get("compact_after_cleanup", True)),
+                compact_min_freelist_ratio=float(cleanup.get("compact_min_freelist_ratio", 0.15)),
             ),
         ),
         users=UsersConfig(alias={str(k): str(v) for k, v in users.get("alias", {}).items()}),

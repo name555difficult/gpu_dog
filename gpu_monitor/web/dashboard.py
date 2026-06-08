@@ -16,9 +16,10 @@ from gpu_monitor.analyzer.weekly_analyzer import WeeklyAnalyzer
 from gpu_monitor.config import Config
 from gpu_monitor.reports.json_cache import ReportCache
 from gpu_monitor.storage.database import Database
-from gpu_monitor.utils.time_utils import isoformat, now_local, parse_local_date, week_bounds
+from gpu_monitor.utils.time_utils import date_range, isoformat, now_local, parse_local_date, week_bounds
 
 logger = logging.getLogger(__name__)
+_SUMMARY_CACHE = None
 
 
 def run_dashboard_server(config: Config, database: Database, stop_event: threading.Event) -> None:
@@ -86,8 +87,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json(current_snapshot(self.app_database, self.app_config))
             return
         if path == "/api/today":
-            today = now_local(self.app_config.app.timezone).date()
-            self._send_json(DailyAnalyzer(self.app_database, self.app_config).analyze(today))
+            self._send_json(today_summary(self.app_database, self.app_config))
             return
         if path == "/api/day":
             day = _first_query_value(query, "date") or now_local(self.app_config.app.timezone).date().isoformat()
@@ -246,11 +246,18 @@ def current_snapshot(database: Database, config: Config) -> dict[str, Any]:
     }
 
 
+def today_summary(database: Database, config: Config) -> dict[str, Any]:
+    today = now_local(config.app.timezone).date()
+    latest_sample = latest_sample_time(database)
+    key = ("today", str(database.sqlite_path), today.isoformat(), latest_sample or "none")
+    return summary_cache().get_or_set(key, lambda: DailyAnalyzer(database, config).analyze(today))
+
+
 def day_summary(database: Database, config: Config, value: str) -> dict[str, Any]:
     target = parse_local_date(value)
     today = now_local(config.app.timezone).date()
     if target == today:
-        return DailyAnalyzer(database, config).analyze(target)
+        return today_summary(database, config)
     return ReportCache(database, config).generate_daily(target)
 
 
@@ -259,8 +266,35 @@ def week_summary(database: Database, config: Config, value: str) -> dict[str, An
     today = now_local(config.app.timezone).date()
     week_start, week_end, _, _ = week_bounds(target, config.app.timezone)
     if week_start <= today <= week_end:
-        return WeeklyAnalyzer(database, config).analyze(target)
+        return current_week_summary(database, config, target)
     return ReportCache(database, config).generate_weekly(target)
+
+
+def current_week_summary(database: Database, config: Config, target: date) -> dict[str, Any]:
+    week_start, _week_end, _start_dt, _end_dt = week_bounds(target, config.app.timezone)
+    latest_sample = latest_sample_time(database)
+    key = ("week", str(database.sqlite_path), week_start.isoformat(), latest_sample or "none")
+
+    def build() -> dict[str, Any]:
+        today = now_local(config.app.timezone).date()
+        cache = ReportCache(database, config)
+        daily_summaries = []
+        for day in date_range(week_start, 7):
+            if day > today:
+                continue
+            if day == today:
+                daily_summaries.append(today_summary(database, config))
+            else:
+                daily_summaries.append(cache.generate_daily(day))
+        return WeeklyAnalyzer(database, config).analyze(target, daily_summaries=daily_summaries)
+
+    return summary_cache().get_or_set(key, build)
+
+
+def latest_sample_time(database: Database) -> str | None:
+    with database.connect() as conn:
+        row = conn.execute("SELECT MAX(sample_time) FROM gpu_device_snapshots").fetchone()
+    return row[0] if row else None
 
 
 def health_status(database: Database, config: Config) -> dict[str, Any]:
@@ -292,6 +326,7 @@ def health_status(database: Database, config: Config) -> dict[str, Any]:
         "latest_sample_time": latest_sample,
         "latest_heartbeat_time": latest_heartbeat,
         "latest_error": dict(latest_error) if latest_error else None,
+        "storage": database.storage_stats(),
         "counts": counts,
         "web": {
             "host": config.web.host,
@@ -299,6 +334,36 @@ def health_status(database: Database, config: Config) -> dict[str, Any]:
             "refresh_interval_seconds": config.web.refresh_interval_seconds,
         },
     }
+
+
+class SummaryCache:
+    def __init__(self, max_entries: int = 32):
+        self.max_entries = max_entries
+        self._lock = threading.Lock()
+        self._entries: dict[tuple[str, ...], dict[str, Any]] = {}
+
+    def get_or_set(self, key: tuple[str, ...], factory) -> dict[str, Any]:
+        with self._lock:
+            value = self._entries.get(key)
+            if value is not None:
+                return value
+
+        value = factory()
+        with self._lock:
+            existing = self._entries.get(key)
+            if existing is not None:
+                return existing
+            self._entries[key] = value
+            while len(self._entries) > self.max_entries:
+                self._entries.pop(next(iter(self._entries)))
+        return value
+
+
+def summary_cache() -> SummaryCache:
+    global _SUMMARY_CACHE
+    if _SUMMARY_CACHE is None:
+        _SUMMARY_CACHE = SummaryCache()
+    return _SUMMARY_CACHE
 
 
 def _html_shell(mode: str, value: str | None, config: Config) -> str:

@@ -8,7 +8,7 @@ GPU Monitor 是一个单机 GPU 使用监控服务，适合多人共享的训练
 
 当前已实现：
 
-- 每 30 秒通过 `nvidia-smi` 采集 GPU 设备和 GPU 进程；
+- 每 60 秒通过 `nvidia-smi` 采集 GPU 设备和 GPU 进程；
 - 通过 `psutil` 将 PID 归因到 Linux 用户名；
 - 将原始进程采样、GPU 快照、heartbeat、异常事件写入 SQLite；
 - 提供 `http://127.0.0.1:8765` 本地 Dashboard；
@@ -45,11 +45,11 @@ web:
   enabled: true
   host: "127.0.0.1"
   port: 8765
-  refresh_interval_seconds: 30
+  refresh_interval_seconds: 60
 
 collector:
   backend: "nvidia-smi"
-  sample_interval_seconds: 30
+  sample_interval_seconds: 60
   active_memory_threshold_mb: 100
   command_timeout_seconds: 10
 ```
@@ -65,6 +65,8 @@ storage:
     weekly_cache_retention_weeks: 12
     error_log_retention_days: 7
     heartbeat_retention_days: 7
+    compact_after_cleanup: true
+    compact_min_freelist_ratio: 0.15
 ```
 
 含义：
@@ -73,6 +75,7 @@ storage:
 - 日报 JSON 缓存保留 14 天；
 - 周报 JSON 缓存保留 12 周；
 - heartbeat 和异常日志保留 7 天。
+- cleanup 后如果 SQLite 空闲页比例超过 15%，自动执行压缩。
 
 用户别名可选配置：
 
@@ -127,6 +130,12 @@ python3 -m gpu_monitor.main --config config.yaml generate-weekly --date 2026-06-
 
 ```bash
 python3 -m gpu_monitor.main --config config.yaml cleanup
+```
+
+手动压缩 SQLite 存储：
+
+```bash
+python3 -m gpu_monitor.main --config config.yaml compact-db
 ```
 
 修复因 PID 瞬时退出导致的历史 `unknown` 归因：

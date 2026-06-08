@@ -15,12 +15,6 @@ CREATE TABLE IF NOT EXISTS gpu_process_samples (
     created_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_samples_date
-ON gpu_process_samples(local_date);
-
-CREATE INDEX IF NOT EXISTS idx_samples_user_gpu_time
-ON gpu_process_samples(username, gpu_index, sample_time);
-
 CREATE INDEX IF NOT EXISTS idx_samples_time
 ON gpu_process_samples(sample_time);
 
@@ -36,9 +30,6 @@ CREATE TABLE IF NOT EXISTS gpu_device_snapshots (
     memory_util_percent REAL,
     created_at TEXT NOT NULL
 );
-
-CREATE INDEX IF NOT EXISTS idx_gpu_snapshot_date
-ON gpu_device_snapshots(local_date);
 
 CREATE INDEX IF NOT EXISTS idx_gpu_snapshot_time
 ON gpu_device_snapshots(sample_time);

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from gpu_monitor.cleanup.cleanup_manager import CleanupManager
 from tests.helpers import TempProject
@@ -28,6 +29,19 @@ class CleanupManagerTest(unittest.TestCase):
 
         self.assertEqual(result["gpu_process_samples"], 1)
         self.assertEqual(remaining, 0)
+        self.assertIn("storage", result)
+
+    def test_compacts_when_freelist_ratio_crosses_threshold(self) -> None:
+        with TempProject() as (config, database):
+            with patch.object(database, "storage_stats", return_value={"freelist_ratio": 0.2}), patch.object(
+                database,
+                "compact",
+                return_value={"before": {}, "after": {}},
+            ) as compact:
+                result = CleanupManager(database, config).run()
+
+        compact.assert_called_once()
+        self.assertEqual(result["compact"], {"before": {}, "after": {}})
 
 
 if __name__ == "__main__":

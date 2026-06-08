@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import unittest
+from datetime import datetime
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
+from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
+from gpu_monitor.analyzer.weekly_analyzer import WeeklyAnalyzer
 from gpu_monitor.reports.json_cache import ReportCache
-from gpu_monitor.web.dashboard import current_snapshot, day_summary, health_status, week_summary
+from gpu_monitor.web.dashboard import current_snapshot, day_summary, health_status, today_summary, week_summary
 from tests.helpers import TempProject, seed_sample_data
 
 
@@ -24,8 +29,49 @@ class ReportsAndWebTest(unittest.TestCase):
         self.assertEqual(current["collector_status"], "ok")
         self.assertEqual(current["gpus"][0]["used_memory_mb"], 4050)
         self.assertEqual(health["status"], "ok")
+        self.assertIn("storage", health)
         self.assertEqual(day["report_type"], "daily")
         self.assertEqual(week["report_type"], "weekly")
+
+    def test_today_summary_uses_latest_sample_cache(self) -> None:
+        fake_now = datetime(2026, 6, 7, 12, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
+        with TempProject() as (config, database):
+            seed_sample_data(database)
+            with patch("gpu_monitor.web.dashboard.now_local", return_value=fake_now), patch.object(
+                DailyAnalyzer,
+                "analyze",
+                return_value={"report_type": "daily", "report_date": "2026-06-07"},
+            ) as analyze:
+                first = today_summary(database, config)
+                second = today_summary(database, config)
+
+        self.assertEqual(first, second)
+        analyze.assert_called_once()
+
+    def test_current_week_summary_uses_latest_sample_cache(self) -> None:
+        fake_now = datetime(2026, 6, 8, 12, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
+        with TempProject() as (config, database):
+            seed_sample_data(database)
+            with patch("gpu_monitor.web.dashboard.now_local", return_value=fake_now), patch(
+                "gpu_monitor.web.dashboard.today_summary",
+                return_value={
+                    "report_type": "daily",
+                    "report_date": "2026-06-08",
+                    "overview": {"active_user_count": 0, "used_gpu_count": 0, "error_count": 0, "total_usage_seconds": 0},
+                    "users": [],
+                    "gpus": [],
+                    "heartbeat_gaps": [],
+                },
+            ), patch.object(
+                WeeklyAnalyzer,
+                "analyze",
+                return_value={"report_type": "weekly", "week_start": "2026-06-08"},
+            ) as analyze:
+                first = week_summary(database, config, "2026-06-08")
+                second = week_summary(database, config, "2026-06-08")
+
+        self.assertEqual(first, second)
+        analyze.assert_called_once()
 
 
 if __name__ == "__main__":

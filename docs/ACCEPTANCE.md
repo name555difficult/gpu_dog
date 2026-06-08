@@ -34,8 +34,8 @@ python3 scripts/acceptance_check.py --config config.yaml --skip-service
 
 ### 采集验收
 
-- 服务启动后 30 秒内开始采集：`run` 启动后立即执行 collector loop，验收脚本检查 `/api/current` 有最新采样。
-- 每 30 秒写入当前 GPU 使用状态：`collector.sample_interval_seconds` 控制，服务日志显示周期采集。
+- 服务启动后立即开始首次采集：`run` 启动后立即执行 collector loop，验收脚本检查 `/api/current` 有最新采样。
+- 每 60 秒写入当前 GPU 使用状态：`collector.sample_interval_seconds` 控制，服务日志显示周期采集。
 - 无 GPU 进程时不误报用户使用：Dashboard 当前用户为空时显示“当前无 GPU 使用”。
 - 多用户同卡分别归因：日报分析按 `username + gpu_index + sample_time` 聚合。
 - 同一用户多进程合并显存：`tests/test_daily_analyzer.py` 验证同采样点多进程先求和。
@@ -45,7 +45,7 @@ python3 scripts/acceptance_check.py --config config.yaml --skip-service
 - 首页可访问：验收脚本请求 `/`。
 - 当前 GPU 状态：验收脚本请求 `/api/current`，检查 `gpus`。
 - 当前活跃用户和进程：`/api/current` 返回 `users` 和每个 GPU 的 `processes`。
-- 页面 30 秒刷新：`web.refresh_interval_seconds` 注入页面，`app.js` 对今日页定时刷新。
+- 页面 60 秒刷新：`web.refresh_interval_seconds` 注入页面，`app.js` 对今日页定时刷新。
 - 采集异常摘要：`/api/current` 和 `/api/today` 返回最近错误。
 - 无 GPU 使用提示：`app.js` 当前用户为空时显示“当前无 GPU 使用”。
 
