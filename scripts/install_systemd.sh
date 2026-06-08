@@ -5,7 +5,7 @@ PROJECT_DIR="${PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SERVICE_NAME="${SERVICE_NAME:-gpu-monitor.service}"
 SERVICE_SRC="${PROJECT_DIR}/systemd/${SERVICE_NAME}"
 SERVICE_DST="/etc/systemd/system/${SERVICE_NAME}"
-SERVICE_RENDERED="$(mktemp)"
+SERVICE_RENDERED="$(mktemp --suffix=.service)"
 trap 'rm -f "${SERVICE_RENDERED}"' EXIT
 
 if [[ ! -f "${SERVICE_SRC}" ]]; then
