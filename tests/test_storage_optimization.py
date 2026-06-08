@@ -14,6 +14,7 @@ class StorageOptimizationTest(unittest.TestCase):
         self.assertEqual(config.web.refresh_interval_seconds, 60)
         self.assertEqual(config.web.max_issue_items, 5)
         self.assertEqual(config.collector.sample_interval_seconds, 60)
+        self.assertEqual(config.session.merge_gap_threshold_seconds, 3600)
         self.assertTrue(config.storage.cleanup.compact_after_cleanup)
         self.assertEqual(config.storage.cleanup.compact_min_freelist_ratio, 0.15)
 

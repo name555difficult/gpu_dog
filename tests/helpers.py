@@ -19,7 +19,7 @@ def make_config(root: Path) -> Config:
                 "active_memory_threshold_mb": 100,
                 "command_timeout_seconds": 10,
             },
-            "session": {"gap_threshold_seconds": 300},
+            "session": {"gap_threshold_seconds": 300, "merge_gap_threshold_seconds": 3600},
             "heartbeat": {"interval_seconds": 60, "missing_threshold_seconds": 300},
             "reports": {
                 "cache_dir": str(root / "reports"),

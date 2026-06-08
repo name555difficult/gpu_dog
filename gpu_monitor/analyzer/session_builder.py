@@ -43,6 +43,28 @@ def build_sessions(
     return sessions
 
 
+def merge_sessions(sessions: list[Session], merge_gap_threshold_seconds: int) -> list[Session]:
+    if not sessions:
+        return []
+
+    ordered = sorted(sessions, key=lambda session: session.start_time)
+    merged: list[Session] = [ordered[0]]
+
+    for session in ordered[1:]:
+        previous = merged[-1]
+        gap = (session.start_time - previous.end_time).total_seconds()
+        if gap <= merge_gap_threshold_seconds:
+            merged[-1] = Session(
+                start_time=previous.start_time,
+                end_time=max(previous.end_time, session.end_time),
+                duration_seconds=previous.duration_seconds + session.duration_seconds,
+            )
+        else:
+            merged.append(session)
+
+    return merged
+
+
 def _make_session(
     start_time: datetime,
     last_sample_time: datetime,

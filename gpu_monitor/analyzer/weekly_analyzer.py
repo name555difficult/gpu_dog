@@ -5,6 +5,7 @@ from datetime import date
 from typing import Any
 
 from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
+from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION
 from gpu_monitor.config import Config
 from gpu_monitor.storage.database import Database
 from gpu_monitor.utils.time_utils import date_range, human_duration, isoformat, now_local, parse_local_date, week_bounds
@@ -37,6 +38,7 @@ class WeeklyAnalyzer:
         total_usage_seconds = sum(summary["overview"]["total_usage_seconds"] for summary in daily_summaries)
 
         return {
+            "summary_schema_version": SUMMARY_SCHEMA_VERSION,
             "report_type": "weekly",
             "week_start": week_start.isoformat(),
             "week_end": week_end.isoformat(),
@@ -45,6 +47,7 @@ class WeeklyAnalyzer:
             "generated_at": isoformat(now_local(self.config.app.timezone)),
             "overview": {
                 "server_name": self.config.app.server_name,
+                "session_merge_gap_threshold_seconds": self.config.session.merge_gap_threshold_seconds,
                 "active_user_count": len(users),
                 "used_gpu_count": len(gpus),
                 "total_usage_seconds": total_usage_seconds,

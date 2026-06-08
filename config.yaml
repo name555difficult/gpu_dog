@@ -17,6 +17,7 @@ collector:
 
 session:
   gap_threshold_seconds: 300
+  merge_gap_threshold_seconds: 3600
 
 heartbeat:
   interval_seconds: 60

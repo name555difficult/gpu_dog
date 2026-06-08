@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION
 from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
 from gpu_monitor.analyzer.weekly_analyzer import WeeklyAnalyzer
 from gpu_monitor.config import Config
@@ -25,7 +26,9 @@ class ReportCache:
         if existing and existing["status"] == "generated" and existing["json_path"] and not force:
             path = Path(existing["json_path"])
             if path.exists():
-                return json.loads(path.read_text(encoding="utf-8"))
+                summary = json.loads(path.read_text(encoding="utf-8"))
+                if self._summary_cache_valid(summary):
+                    return summary
 
         summary = DailyAnalyzer(self.database, self.config).analyze(target)
         path = self._daily_path(target)
@@ -40,7 +43,9 @@ class ReportCache:
         if existing and existing["status"] == "generated" and existing["json_path"] and not force:
             path = Path(existing["json_path"])
             if path.exists():
-                return json.loads(path.read_text(encoding="utf-8"))
+                summary = json.loads(path.read_text(encoding="utf-8"))
+                if self._summary_cache_valid(summary):
+                    return summary
 
         today = now_local(self.config.app.timezone).date()
         daily_summaries = [self.generate_daily(day, force=force) for day in _days(week_start, 7) if day <= today]
@@ -59,6 +64,12 @@ class ReportCache:
     def _write_json(self, path: Path, data: dict[str, Any]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+
+    def _summary_cache_valid(self, summary: dict[str, Any]) -> bool:
+        if summary.get("summary_schema_version") != SUMMARY_SCHEMA_VERSION:
+            return False
+        merge_gap = summary.get("overview", {}).get("session_merge_gap_threshold_seconds")
+        return merge_gap == self.config.session.merge_gap_threshold_seconds
 
     def _daily_record(self, report_date: str):
         with self.database.connect() as conn:

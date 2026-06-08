@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from gpu_monitor.analyzer.session_builder import ActivePoint, build_sessions
+from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION
+from gpu_monitor.analyzer.session_builder import ActivePoint, build_sessions, merge_sessions
 from gpu_monitor.config import Config
 from gpu_monitor.storage.database import Database
 from gpu_monitor.utils.time_utils import day_bounds, human_duration, isoformat, parse_iso_datetime, parse_local_date
@@ -35,6 +36,7 @@ class DailyAnalyzer:
             "server_name": self.config.app.server_name,
             "sample_interval_seconds": self.config.collector.sample_interval_seconds,
             "active_memory_threshold_mb": self.config.collector.active_memory_threshold_mb,
+            "session_merge_gap_threshold_seconds": self.config.session.merge_gap_threshold_seconds,
             "active_user_count": len(users),
             "used_gpu_count": len(gpus),
             "total_usage_seconds": sum(entry["duration_seconds"] for entry in user_gpu),
@@ -45,6 +47,7 @@ class DailyAnalyzer:
         }
 
         return {
+            "summary_schema_version": SUMMARY_SCHEMA_VERSION,
             "report_type": "daily",
             "report_date": target_date.isoformat(),
             "range_start": start,
@@ -100,12 +103,13 @@ class DailyAnalyzer:
     ) -> list[dict[str, Any]]:
         entries: list[dict[str, Any]] = []
         for (username, gpu_index), points in sorted(grouped.items(), key=lambda item: (item[0][0], item[0][1])):
-            sessions = build_sessions(
+            raw_sessions = build_sessions(
                 points,
                 gap_threshold_seconds=self.config.session.gap_threshold_seconds,
                 sample_interval_seconds=self.config.collector.sample_interval_seconds,
                 range_end=range_end,
             )
+            sessions = merge_sessions(raw_sessions, self.config.session.merge_gap_threshold_seconds)
             duration_seconds = sum(session.duration_seconds for session in sessions)
             memory_values = [point.memory_mb for point in points]
             entries.append(

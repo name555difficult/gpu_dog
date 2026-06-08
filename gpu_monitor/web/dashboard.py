@@ -275,7 +275,13 @@ def current_snapshot(database: Database, config: Config) -> dict[str, Any]:
 def today_summary(database: Database, config: Config) -> dict[str, Any]:
     today = now_local(config.app.timezone).date()
     latest_sample = latest_sample_time(database)
-    key = ("today", str(database.sqlite_path), today.isoformat(), latest_sample or "none")
+    key = (
+        "today",
+        str(database.sqlite_path),
+        today.isoformat(),
+        latest_sample or "none",
+        config.session.merge_gap_threshold_seconds,
+    )
     return summary_cache().get_or_set(key, lambda: DailyAnalyzer(database, config).analyze(today))
 
 
@@ -299,7 +305,13 @@ def week_summary(database: Database, config: Config, value: str) -> dict[str, An
 def current_week_summary(database: Database, config: Config, target: date) -> dict[str, Any]:
     week_start, _week_end, _start_dt, _end_dt = week_bounds(target, config.app.timezone)
     latest_sample = latest_sample_time(database)
-    key = ("week", str(database.sqlite_path), week_start.isoformat(), latest_sample or "none")
+    key = (
+        "week",
+        str(database.sqlite_path),
+        week_start.isoformat(),
+        latest_sample or "none",
+        config.session.merge_gap_threshold_seconds,
+    )
 
     def build() -> dict[str, Any]:
         today = now_local(config.app.timezone).date()

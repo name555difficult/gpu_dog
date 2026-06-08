@@ -33,6 +33,7 @@ class CollectorConfig:
 @dataclass(frozen=True)
 class SessionConfig:
     gap_threshold_seconds: int
+    merge_gap_threshold_seconds: int
 
 
 @dataclass(frozen=True)
@@ -122,6 +123,7 @@ def parse_config(raw: dict[str, Any]) -> Config:
         ),
         session=SessionConfig(
             gap_threshold_seconds=int(session.get("gap_threshold_seconds", 300)),
+            merge_gap_threshold_seconds=int(session.get("merge_gap_threshold_seconds", 3600)),
         ),
         heartbeat=HeartbeatConfig(
             interval_seconds=int(heartbeat.get("interval_seconds", 60)),

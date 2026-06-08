@@ -54,7 +54,14 @@ collector:
   sample_interval_seconds: 60
   active_memory_threshold_mb: 100
   command_timeout_seconds: 10
+
+session:
+  gap_threshold_seconds: 300
+  merge_gap_threshold_seconds: 3600
 ```
+
+`session.gap_threshold_seconds` 用于判断原始采样是否连续活跃。`session.merge_gap_threshold_seconds`
+用于合并展示同一用户、同一 GPU 的短间隔使用时段；合并后的 `Duration` 仍只统计真实活跃时长，不包含中间空档。
 
 轻量数据保留策略：
 
