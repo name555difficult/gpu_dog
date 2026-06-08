@@ -7,12 +7,12 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION
 from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
+from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION, report_config_hash
 from gpu_monitor.analyzer.weekly_analyzer import WeeklyAnalyzer
 from gpu_monitor.config import Config
 from gpu_monitor.storage.database import Database
-from gpu_monitor.utils.time_utils import isoformat, now_local, parse_local_date, week_bounds
+from gpu_monitor.utils.time_utils import day_bounds, isoformat, now_local, parse_iso_datetime, parse_local_date, week_bounds
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,8 @@ class ReportCache:
             if path.exists():
                 summary = json.loads(path.read_text(encoding="utf-8"))
                 if self._summary_cache_valid(summary):
+                    return summary
+                if not self._raw_complete_for_day(target):
                     return summary
 
         summary = DailyAnalyzer(self.database, self.config).analyze(target)
@@ -45,6 +47,8 @@ class ReportCache:
             if path.exists():
                 summary = json.loads(path.read_text(encoding="utf-8"))
                 if self._summary_cache_valid(summary):
+                    return summary
+                if not self._weekly_sources_available(week_start):
                     return summary
 
         today = now_local(self.config.app.timezone).date()
@@ -68,8 +72,44 @@ class ReportCache:
     def _summary_cache_valid(self, summary: dict[str, Any]) -> bool:
         if summary.get("summary_schema_version") != SUMMARY_SCHEMA_VERSION:
             return False
-        merge_gap = summary.get("overview", {}).get("session_merge_gap_threshold_seconds")
-        return merge_gap == self.config.session.merge_gap_threshold_seconds
+        return summary.get("report_config_hash") == report_config_hash(self.config)
+
+    def _raw_complete_for_day(self, target: date) -> bool:
+        start_dt, end_dt = day_bounds(target, self.config.app.timezone)
+        tolerance_seconds = max(60, self.config.collector.sample_interval_seconds * 2)
+        with self.database.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT MIN(sample_time) AS min_time, MAX(sample_time) AS max_time
+                FROM gpu_device_snapshots
+                WHERE sample_time >= ? AND sample_time < ?
+                """,
+                (isoformat(start_dt), isoformat(end_dt)),
+            ).fetchone()
+        if not row or row["min_time"] is None or row["max_time"] is None:
+            return False
+        first_sample = parse_iso_datetime(row["min_time"])
+        last_sample = parse_iso_datetime(row["max_time"])
+        return (
+            (first_sample - start_dt).total_seconds() <= tolerance_seconds
+            and (end_dt - last_sample).total_seconds() <= tolerance_seconds
+        )
+
+    def _daily_cache_available(self, target: date) -> bool:
+        existing = self._daily_record(target.isoformat())
+        if not existing or not existing["json_path"]:
+            return False
+        return Path(existing["json_path"]).exists()
+
+    def _weekly_sources_available(self, week_start: date) -> bool:
+        today = now_local(self.config.app.timezone).date()
+        for day in _days(week_start, 7):
+            if day > today:
+                continue
+            if self._daily_cache_available(day) or self._raw_complete_for_day(day):
+                continue
+            return False
+        return True
 
     def _daily_record(self, report_date: str):
         with self.database.connect() as conn:

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import traceback
+import logging
 from datetime import datetime
+from pathlib import Path
 
 from gpu_monitor.collector.models import CollectionResult, GpuDeviceSnapshot, GpuProcessSample
 from gpu_monitor.storage.database import Database
 from gpu_monitor.utils.time_utils import isoformat, now_local
+
+logger = logging.getLogger(__name__)
+UNKNOWN_REPAIR_WINDOW_SECONDS = 600
+MISSING_PROCESS_NAMES = ("", "[No data]")
 
 
 class MonitorRepository:
@@ -79,30 +85,50 @@ class MonitorRepository:
 
     def repair_unknown_users(self, dry_run: bool = False) -> list[dict[str, object]]:
         repairs: list[dict[str, object]] = []
+        affected_dates: set[str] = set()
         with self.database.connect() as conn:
             unknown_rows = conn.execute(
                 """
-                SELECT id, sample_time, gpu_index, pid, process_name, used_memory_mb
+                SELECT id, sample_time, local_date, gpu_index, pid, process_name, used_memory_mb
                 FROM gpu_process_samples
                 WHERE username = 'unknown'
                 ORDER BY sample_time
                 """
             ).fetchall()
             for row in unknown_rows:
-                known = conn.execute(
+                candidates = conn.execute(
                     """
-                    SELECT username, process_name, sample_time
+                    SELECT
+                        username,
+                        process_name,
+                        sample_time,
+                        ABS((julianday(sample_time) - julianday(?)) * 86400.0) AS gap_seconds
                     FROM gpu_process_samples
-                    WHERE pid = ? AND username != 'unknown'
-                    ORDER BY ABS((julianday(sample_time) - julianday(?)) * 86400.0)
-                    LIMIT 1
+                    WHERE pid = ?
+                      AND gpu_index = ?
+                      AND username != 'unknown'
+                      AND ABS((julianday(sample_time) - julianday(?)) * 86400.0) <= ?
+                    ORDER BY gap_seconds, sample_time
                     """,
-                    (row["pid"], row["sample_time"]),
-                ).fetchone()
-                if known is None:
+                    (
+                        row["sample_time"],
+                        row["pid"],
+                        row["gpu_index"],
+                        row["sample_time"],
+                        UNKNOWN_REPAIR_WINDOW_SECONDS,
+                    ),
+                ).fetchall()
+                candidates = [
+                    candidate
+                    for candidate in candidates
+                    if _process_names_compatible(row["process_name"], candidate["process_name"])
+                ]
+                candidate_users = {candidate["username"] for candidate in candidates}
+                if len(candidate_users) != 1:
                     continue
+                known = candidates[0]
                 process_name = row["process_name"]
-                if (process_name is None or process_name in ("", "[No data]")) and known["process_name"]:
+                if _missing_process_name(process_name) and known["process_name"]:
                     process_name = known["process_name"]
                 repairs.append(
                     {
@@ -115,10 +141,12 @@ class MonitorRepository:
                         "old_process_name": row["process_name"],
                         "new_process_name": process_name,
                         "reference_sample_time": known["sample_time"],
+                        "reference_gap_seconds": int(float(known["gap_seconds"])),
                         "used_memory_mb": row["used_memory_mb"],
                     }
                 )
                 if not dry_run:
+                    affected_dates.add(row["local_date"])
                     conn.execute(
                         """
                         UPDATE gpu_process_samples
@@ -127,7 +155,39 @@ class MonitorRepository:
                         """,
                         (known["username"], process_name, row["id"]),
                     )
+            if affected_dates and not dry_run:
+                self._invalidate_report_caches(conn, affected_dates)
         return repairs
+
+    @staticmethod
+    def _invalidate_report_caches(conn, affected_dates: set[str]) -> None:
+        daily_rows = conn.execute(
+            f"""
+            SELECT id, json_path
+            FROM daily_reports
+            WHERE report_date IN ({",".join("?" for _ in affected_dates)})
+            """,
+            tuple(sorted(affected_dates)),
+        ).fetchall()
+        weekly_rows = conn.execute(
+            """
+            SELECT id, json_path, week_start, week_end
+            FROM weekly_reports
+            """
+        ).fetchall()
+        weekly_rows = [
+            row
+            for row in weekly_rows
+            if any(row["week_start"] <= affected_date <= row["week_end"] for affected_date in affected_dates)
+        ]
+
+        _delete_report_files(row["json_path"] for row in daily_rows)
+        _delete_report_files(row["json_path"] for row in weekly_rows)
+
+        if daily_rows:
+            conn.executemany("DELETE FROM daily_reports WHERE id = ?", [(row["id"],) for row in daily_rows])
+        if weekly_rows:
+            conn.executemany("DELETE FROM weekly_reports WHERE id = ?", [(row["id"],) for row in weekly_rows])
 
 
 def _snapshot_row(snapshot: GpuDeviceSnapshot) -> tuple:
@@ -156,3 +216,25 @@ def _sample_row(sample: GpuProcessSample) -> tuple:
         sample.used_memory_mb,
         sample.created_at,
     )
+
+
+def _missing_process_name(value: str | None) -> bool:
+    return value is None or value in MISSING_PROCESS_NAMES
+
+
+def _process_names_compatible(unknown_name: str | None, known_name: str | None) -> bool:
+    if _missing_process_name(unknown_name) or _missing_process_name(known_name):
+        return True
+    return unknown_name == known_name
+
+
+def _delete_report_files(paths) -> None:
+    for raw_path in paths:
+        if not raw_path:
+            continue
+        path = Path(raw_path)
+        try:
+            if path.exists() and path.is_file():
+                path.unlink()
+        except OSError as exc:
+            logger.warning("Unable to delete invalidated report cache %s: %s", path, exc)

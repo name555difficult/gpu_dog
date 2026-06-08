@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION
+from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION, report_config_hash
 from gpu_monitor.analyzer.session_builder import ActivePoint, build_sessions, merge_sessions
 from gpu_monitor.config import Config
 from gpu_monitor.storage.database import Database
@@ -48,6 +48,7 @@ class DailyAnalyzer:
 
         return {
             "summary_schema_version": SUMMARY_SCHEMA_VERSION,
+            "report_config_hash": report_config_hash(self.config),
             "report_type": "daily",
             "report_date": target_date.isoformat(),
             "range_start": start,
@@ -171,6 +172,7 @@ class DailyAnalyzer:
                     "gpu_indexes": sorted(summary["gpu_indexes"]),
                     "duration_seconds": summary["duration_seconds"],
                     "duration_human": human_duration(summary["duration_seconds"]),
+                    "active_sample_count": active_samples,
                     "avg_memory_mb": round(avg_memory_mb, 2),
                     "avg_memory_gb": round(avg_memory_mb / 1024, 2),
                     "peak_memory_mb": round(summary["peak_memory_mb"], 2),

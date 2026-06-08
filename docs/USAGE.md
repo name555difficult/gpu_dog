@@ -156,7 +156,8 @@ python3 -m gpu_monitor.main --config config.yaml repair-unknown-users
 python3 -m gpu_monitor.main --config config.yaml generate-daily --date YYYY-MM-DD --force
 ```
 
-该命令只会修复“同一 PID 在其他采样点已经有明确 Linux 用户名”的记录。
+该命令只会修复“同一 PID、同一 GPU、10 分钟内已经有明确 Linux 用户名，且没有多用户候选冲突”的记录。
+如果执行了实际修复，受影响日期和自然周的 JSON 报表缓存会自动失效，下次访问时重新生成。
 
 运行测试：
 

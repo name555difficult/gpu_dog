@@ -5,7 +5,7 @@ from datetime import date
 from typing import Any
 
 from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
-from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION
+from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION, report_config_hash
 from gpu_monitor.config import Config
 from gpu_monitor.storage.database import Database
 from gpu_monitor.utils.time_utils import date_range, human_duration, isoformat, now_local, parse_local_date, week_bounds
@@ -39,6 +39,7 @@ class WeeklyAnalyzer:
 
         return {
             "summary_schema_version": SUMMARY_SCHEMA_VERSION,
+            "report_config_hash": report_config_hash(self.config),
             "report_type": "weekly",
             "week_start": week_start.isoformat(),
             "week_end": week_end.isoformat(),
@@ -86,19 +87,22 @@ class WeeklyAnalyzer:
                         "duration_seconds": 0,
                         "peak_memory_mb": 0.0,
                         "weighted_memory_sum": 0.0,
+                        "active_sample_count": 0,
                         "active_days": 0,
                     },
                 )
+                active_sample_count = int(user.get("active_sample_count") or 1)
                 record["gpu_indexes"].update(user["gpu_indexes"])
                 record["duration_seconds"] += user["duration_seconds"]
                 record["peak_memory_mb"] = max(record["peak_memory_mb"], user["peak_memory_mb"])
-                record["weighted_memory_sum"] += user["avg_memory_mb"]
+                record["weighted_memory_sum"] += user["avg_memory_mb"] * active_sample_count
+                record["active_sample_count"] += active_sample_count
                 record["active_days"] += 1
 
         result: list[dict[str, Any]] = []
         for record in by_user.values():
-            active_days = record["active_days"]
-            avg_memory_mb = record["weighted_memory_sum"] / active_days if active_days else 0.0
+            active_samples = record["active_sample_count"]
+            avg_memory_mb = record["weighted_memory_sum"] / active_samples if active_samples else 0.0
             result.append(
                 {
                     "username": record["username"],
@@ -106,13 +110,14 @@ class WeeklyAnalyzer:
                     "gpu_indexes": sorted(record["gpu_indexes"]),
                     "duration_seconds": record["duration_seconds"],
                     "duration_human": human_duration(record["duration_seconds"]),
+                    "active_sample_count": active_samples,
                     "daily_avg_usage_seconds": int(record["duration_seconds"] / 7),
                     "daily_avg_usage_human": human_duration(int(record["duration_seconds"] / 7)),
                     "avg_memory_mb": round(avg_memory_mb, 2),
                     "avg_memory_gb": round(avg_memory_mb / 1024, 2),
                     "peak_memory_mb": round(record["peak_memory_mb"], 2),
                     "peak_memory_gb": round(record["peak_memory_mb"] / 1024, 2),
-                    "active_days": active_days,
+                    "active_days": record["active_days"],
                 }
             )
         return sorted(result, key=lambda item: (-item["duration_seconds"], item["username"]))

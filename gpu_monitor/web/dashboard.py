@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from gpu_monitor.analyzer.report_schema import report_config_hash
 from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
 from gpu_monitor.analyzer.weekly_analyzer import WeeklyAnalyzer
 from gpu_monitor.config import Config
@@ -280,7 +281,7 @@ def today_summary(database: Database, config: Config) -> dict[str, Any]:
         str(database.sqlite_path),
         today.isoformat(),
         latest_sample or "none",
-        config.session.merge_gap_threshold_seconds,
+        report_config_hash(config),
     )
     return summary_cache().get_or_set(key, lambda: DailyAnalyzer(database, config).analyze(today))
 
@@ -310,7 +311,7 @@ def current_week_summary(database: Database, config: Config, target: date) -> di
         str(database.sqlite_path),
         week_start.isoformat(),
         latest_sample or "none",
-        config.session.merge_gap_threshold_seconds,
+        report_config_hash(config),
     )
 
     def build() -> dict[str, Any]:
