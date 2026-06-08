@@ -129,6 +129,16 @@ python3 -m gpu_monitor.main --config config.yaml generate-weekly --date 2026-06-
 python3 -m gpu_monitor.main --config config.yaml cleanup
 ```
 
+修复因 PID 瞬时退出导致的历史 `unknown` 归因：
+
+```bash
+python3 -m gpu_monitor.main --config config.yaml repair-unknown-users --dry-run
+python3 -m gpu_monitor.main --config config.yaml repair-unknown-users
+python3 -m gpu_monitor.main --config config.yaml generate-daily --date YYYY-MM-DD --force
+```
+
+该命令只会修复“同一 PID 在其他采样点已经有明确 Linux 用户名”的记录。
+
 运行测试：
 
 ```bash

@@ -19,8 +19,9 @@ async function getJson(url) {
   return response.json();
 }
 
-function metric(label, value, extra = "") {
-  return `<div class="panel"><div class="metric-label">${escapeHtml(label)}</div><div class="metric-value">${escapeHtml(value)}</div>${extra}</div>`;
+function metric(label, value, extra = "", valueClass = "") {
+  const classes = ["metric-value", valueClass].filter(Boolean).join(" ");
+  return `<div class="panel"><div class="metric-label">${escapeHtml(label)}</div><div class="${classes}">${escapeHtml(value)}</div>${extra}</div>`;
 }
 
 function table(headers, rows) {
@@ -163,6 +164,7 @@ function renderWeek(summary) {
       ${metric("Heartbeat Gaps", summary.overview.heartbeat_gap_count)}
       ${metric("Errors", summary.overview.error_count)}
       ${metric("Empty Days", (summary.overview.missing_or_empty_dates || []).length)}
+      ${metric("Future Days", (summary.overview.future_dates || []).length)}
     </div>
     <section class="section">
       <h3>Users</h3>
@@ -186,9 +188,9 @@ function renderHealth(health) {
     <div class="toolbar"><h2>Health</h2></div>
     <div class="grid">
       ${metric("Status", health.status)}
-      ${metric("Latest Sample", health.latest_sample_time || "none")}
-      ${metric("Latest Heartbeat", health.latest_heartbeat_time || "none")}
-      ${metric("Database", health.database_path)}
+      ${metric("Latest Sample", health.latest_sample_time || "none", "", "compact")}
+      ${metric("Latest Heartbeat", health.latest_heartbeat_time || "none", "", "compact")}
+      ${metric("Database", health.database_path, "", "compact path")}
     </div>
     <section class="section">
       <h3>Rows</h3>

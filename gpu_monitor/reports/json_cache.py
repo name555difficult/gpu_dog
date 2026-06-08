@@ -42,7 +42,8 @@ class ReportCache:
             if path.exists():
                 return json.loads(path.read_text(encoding="utf-8"))
 
-        daily_summaries = [self.generate_daily(day, force=force) for day in _days(week_start, 7)]
+        today = now_local(self.config.app.timezone).date()
+        daily_summaries = [self.generate_daily(day, force=force) for day in _days(week_start, 7) if day <= today]
         summary = WeeklyAnalyzer(self.database, self.config).analyze(week_start, daily_summaries=daily_summaries)
         path = self._weekly_path(week_start, week_end)
         self._write_json(path, summary)

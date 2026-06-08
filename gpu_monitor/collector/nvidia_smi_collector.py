@@ -27,6 +27,7 @@ class NvidiaSmiCollector:
         self.timezone = timezone
         self.timeout_seconds = timeout_seconds
         self.resolver = resolver or ProcessResolver()
+        self._process_name_cache: dict[int, str] = {}
 
     def collect(self) -> CollectionResult:
         sample_dt = now_local(self.timezone)
@@ -109,6 +110,7 @@ class NvidiaSmiCollector:
             if pid is None or used_memory_mb is None:
                 logger.warning("Skipping process row without pid/memory: %s", row)
                 continue
+            process_name = self._normalize_process_name(pid, row[2])
 
             samples.append(
                 GpuProcessSample(
@@ -118,7 +120,7 @@ class NvidiaSmiCollector:
                     gpu_uuid=gpu_uuid,
                     pid=pid,
                     username=self.resolver.username_for_pid(pid),
-                    process_name=row[2] or None,
+                    process_name=process_name,
                     used_memory_mb=used_memory_mb,
                     created_at=created_at,
                 )
@@ -135,6 +137,13 @@ class NvidiaSmiCollector:
             timeout=self.timeout_seconds,
         )
         return completed.stdout
+
+    def _normalize_process_name(self, pid: int, value: str) -> str | None:
+        process_name = value.strip() if value else ""
+        if process_name and process_name != "[No data]":
+            self._process_name_cache[pid] = process_name
+            return process_name
+        return self._process_name_cache.get(pid) or (process_name or None)
 
 
 def _csv_rows(output: str) -> list[list[str]]:

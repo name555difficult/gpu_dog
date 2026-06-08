@@ -114,6 +114,7 @@ nav a,
   background: var(--panel);
   border-radius: 8px;
   padding: 14px;
+  min-width: 0;
 }
 
 .metric-label {
@@ -126,6 +127,18 @@ nav a,
   margin-top: 8px;
   font-size: 24px;
   font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.metric-value.compact {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 650;
+}
+
+.metric-value.path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 .section {

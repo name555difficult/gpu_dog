@@ -18,7 +18,8 @@ class WeeklyAnalyzer:
     def analyze(self, week_date: str | date, daily_summaries: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         target = parse_local_date(week_date) if isinstance(week_date, str) else week_date
         week_start, week_end, start_dt, end_dt = week_bounds(target, self.config.app.timezone)
-        days = date_range(week_start, 7)
+        today = now_local(self.config.app.timezone).date()
+        days = [day for day in date_range(week_start, 7) if day <= today]
 
         if daily_summaries is None:
             daily = DailyAnalyzer(self.database, self.config)
@@ -51,6 +52,7 @@ class WeeklyAnalyzer:
                 "heartbeat_gap_count": sum(len(summary["heartbeat_gaps"]) for summary in daily_summaries),
                 "error_count": sum(summary["overview"]["error_count"] for summary in daily_summaries),
                 "missing_or_empty_dates": missing_dates,
+                "future_dates": [day.isoformat() for day in date_range(week_start, 7) if day > today],
             },
             "users": users,
             "gpus": gpus,

@@ -39,6 +39,12 @@ def build_parser() -> argparse.ArgumentParser:
     weekly_parser.add_argument("--force", action="store_true", help="Regenerate even if cache exists")
 
     subparsers.add_parser("cleanup", help="Run retention cleanup once")
+
+    repair_parser = subparsers.add_parser(
+        "repair-unknown-users",
+        help="Backfill unknown usernames when the same PID has a known username in nearby samples",
+    )
+    repair_parser.add_argument("--dry-run", action="store_true", help="Print repairs without updating SQLite")
     return parser
 
 
@@ -83,6 +89,13 @@ def main(argv: list[str] | None = None) -> int:
         logger.info("Cleanup result: %s", CleanupManager(database, config).run())
         return 0
 
+    if command == "repair-unknown-users":
+        repairs = repository.repair_unknown_users(dry_run=args.dry_run)
+        logger.info("%s unknown user repairs%s", len(repairs), " (dry run)" if args.dry_run else "")
+        for repair in repairs:
+            logger.info("repair: %s", repair)
+        return 0
+
     if command == "run":
         run_service(config, repository)
         return 0
@@ -90,14 +103,16 @@ def main(argv: list[str] | None = None) -> int:
     raise ValueError(f"Unknown command: {command}")
 
 
-def collect_once(config: Config, repository: MonitorRepository) -> None:
+def collect_once(
+    config: Config,
+    repository: MonitorRepository,
+    collector: NvidiaSmiCollector | None = None,
+) -> None:
     if config.collector.backend != "nvidia-smi":
         raise ValueError(f"Unsupported collector backend: {config.collector.backend}")
 
-    collector = NvidiaSmiCollector(
-        timezone=config.app.timezone,
-        timeout_seconds=config.collector.command_timeout_seconds,
-    )
+    if collector is None:
+        collector = build_collector(config)
 
     try:
         result = collector.collect()
@@ -173,9 +188,10 @@ def run_service(config: Config, repository: MonitorRepository) -> None:
 
 
 def _collector_loop(config: Config, repository: MonitorRepository, stop_event: threading.Event) -> None:
+    collector = build_collector(config)
     while not stop_event.is_set():
         start = time.monotonic()
-        collect_once(config, repository)
+        collect_once(config, repository, collector=collector)
         elapsed = time.monotonic() - start
         sleep_seconds = max(0.0, config.collector.sample_interval_seconds - elapsed)
         if elapsed > config.collector.sample_interval_seconds:
@@ -185,6 +201,13 @@ def _collector_loop(config: Config, repository: MonitorRepository, stop_event: t
                 config.collector.sample_interval_seconds,
             )
         stop_event.wait(sleep_seconds)
+
+
+def build_collector(config: Config) -> NvidiaSmiCollector:
+    return NvidiaSmiCollector(
+        timezone=config.app.timezone,
+        timeout_seconds=config.collector.command_timeout_seconds,
+    )
 
 
 def _heartbeat_loop(config: Config, repository: MonitorRepository, stop_event: threading.Event) -> None:

@@ -77,6 +77,58 @@ class MonitorRepository:
                 "error_events": conn.execute("SELECT COUNT(*) FROM error_events").fetchone()[0],
             }
 
+    def repair_unknown_users(self, dry_run: bool = False) -> list[dict[str, object]]:
+        repairs: list[dict[str, object]] = []
+        with self.database.connect() as conn:
+            unknown_rows = conn.execute(
+                """
+                SELECT id, sample_time, gpu_index, pid, process_name, used_memory_mb
+                FROM gpu_process_samples
+                WHERE username = 'unknown'
+                ORDER BY sample_time
+                """
+            ).fetchall()
+            for row in unknown_rows:
+                known = conn.execute(
+                    """
+                    SELECT username, process_name, sample_time
+                    FROM gpu_process_samples
+                    WHERE pid = ? AND username != 'unknown'
+                    ORDER BY ABS((julianday(sample_time) - julianday(?)) * 86400.0)
+                    LIMIT 1
+                    """,
+                    (row["pid"], row["sample_time"]),
+                ).fetchone()
+                if known is None:
+                    continue
+                process_name = row["process_name"]
+                if (process_name is None or process_name in ("", "[No data]")) and known["process_name"]:
+                    process_name = known["process_name"]
+                repairs.append(
+                    {
+                        "id": row["id"],
+                        "sample_time": row["sample_time"],
+                        "gpu_index": row["gpu_index"],
+                        "pid": row["pid"],
+                        "old_username": "unknown",
+                        "new_username": known["username"],
+                        "old_process_name": row["process_name"],
+                        "new_process_name": process_name,
+                        "reference_sample_time": known["sample_time"],
+                        "used_memory_mb": row["used_memory_mb"],
+                    }
+                )
+                if not dry_run:
+                    conn.execute(
+                        """
+                        UPDATE gpu_process_samples
+                        SET username = ?, process_name = ?
+                        WHERE id = ?
+                        """,
+                        (known["username"], process_name, row["id"]),
+                    )
+        return repairs
+
 
 def _snapshot_row(snapshot: GpuDeviceSnapshot) -> tuple:
     return (
