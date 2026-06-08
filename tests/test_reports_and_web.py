@@ -6,13 +6,13 @@ from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
-from zoneinfo import ZoneInfo
 
 from gpu_monitor.analyzer.daily_analyzer import DailyAnalyzer
 from gpu_monitor.analyzer.report_schema import SUMMARY_SCHEMA_VERSION
 from gpu_monitor.analyzer.weekly_analyzer import WeeklyAnalyzer
 from gpu_monitor.reports.markdown_export import daily_to_markdown, weekly_to_markdown
 from gpu_monitor.reports.json_cache import ReportCache
+from gpu_monitor.utils.zoneinfo_compat import ZoneInfo
 from gpu_monitor.web.dashboard import current_snapshot, day_summary, health_status, today_summary, week_summary
 from tests.helpers import TempProject, seed_sample_data
 

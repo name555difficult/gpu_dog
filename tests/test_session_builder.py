@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from gpu_monitor.analyzer.session_builder import ActivePoint, build_sessions, merge_sessions
+from gpu_monitor.utils.zoneinfo_compat import ZoneInfo
 
 
 class SessionBuilderTest(unittest.TestCase):

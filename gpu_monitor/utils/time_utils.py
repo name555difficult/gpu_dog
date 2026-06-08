@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
+
+from gpu_monitor.utils.zoneinfo_compat import ZoneInfo
 
 
 def now_local(timezone: str) -> datetime:

@@ -23,11 +23,14 @@ cd <project-root>
 git log -3 --oneline
 ```
 
-确认 Python 依赖可用：
+安装并确认 Python 依赖可用：
 
 ```bash
-/usr/bin/python3 -c "import yaml, psutil; print('python deps ok')"
+python3 -m pip install -r requirements.txt
+python3 -c "import yaml, psutil; from gpu_monitor.utils.zoneinfo_compat import ZoneInfo; ZoneInfo('Asia/Shanghai'); print('python deps ok')"
 ```
+
+如果服务器是 Python 3.8，`requirements.txt` 会自动安装 `backports.zoneinfo` 和 `tzdata`，用于补齐 Python 3.9 才内置的时区模块。
 
 确认 NVIDIA 工具可用：
 
