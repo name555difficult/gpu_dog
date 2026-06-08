@@ -72,17 +72,17 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_html(_html_shell("health", None, self.app_config))
             return
         if path.startswith("/day/"):
-            value = path.removeprefix("/day/").strip("/")
+            value = path[len("/day/") :].strip("/")
             parse_local_date(value)
             self._send_html(_html_shell("day", value, self.app_config))
             return
         if path.startswith("/week/"):
-            value = path.removeprefix("/week/").strip("/")
+            value = path[len("/week/") :].strip("/")
             parse_local_date(value)
             self._send_html(_html_shell("week", value, self.app_config))
             return
         if path.startswith("/static/"):
-            self._send_static(path.removeprefix("/static/"))
+            self._send_static(path[len("/static/") :])
             return
 
         if path == "/api/current":
